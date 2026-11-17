@@ -14,7 +14,7 @@ El backend expone una API REST y un WebSocket (`/ws/comandas`) para notificar nu
 
 ## Tecnologías
 
-- **Backend:** Python 3.14, FastAPI, SQLAlchemy, SQLite, Uvicorn
+- **Backend:** Python 3.14, FastAPI, SQLAlchemy, SQLite, Uvicorn, websockets
 - **Frontend:** HTML, CSS y JavaScript vanilla, Tailwind CSS por CDN, Lucide, Chart.js
 - **Base de datos:** SQLite (`restaurante.db`, se genera en local)
 
@@ -37,6 +37,10 @@ frontend/
   panel_barra.html
   panel_caja.html
   panel_admin.html
+docs/
+  screenshots/     # Capturas de demostración de cada panel
+  ejemplos/        # Reporte de corte (PDF y Excel) y ticket de ejemplo
+  manuales/        # Manual de Usuario y Manual del Programador (PDF)
 ```
 
 ## Cómo correrlo en local
@@ -100,3 +104,56 @@ Los usuarios de prueba se crean con `backend/usuarios.py`. La contraseña inicia
 
 - El archivo `restaurante.db` no está en el repositorio: se crea automáticamente al iniciar el backend y se llena con los scripts de `productos.py` y `usuarios.py`.
 - El backend permite CORS desde cualquier origen (`allow_origins=["*"]`), pensado para uso en red local. No lo expongas directamente a internet sin autenticación y HTTPS.
+
+## Capturas de demostración
+
+Capturas del sistema corriendo en local, con dos comandas demo: la orden #1 en la mesa T1 (Mesa 1, Terraza) — 2× Papas Preparadas, 1× Pozole (Completo), 2× Refresco y 1× Michelada, total $410.00, cobrada en efectivo — y la orden #2 en la Mesa 2 — 1× Hamburguesa Res, 2× Cerveza (Botella) y 1× Nachos c/Arrachera, total $270.00, pendiente de cobro, que es la que se ve en la captura del panel mesero.
+
+### Inicio de sesión
+
+![Inicio de sesión](docs/screenshots/01-login.png)
+
+### Panel mesero
+
+![Panel mesero](docs/screenshots/02-panel-mesero.png)
+
+### Panel cocina
+
+![Panel cocina](docs/screenshots/03-panel-cocina.png)
+
+### Panel barra
+
+![Panel barra](docs/screenshots/04-panel-barra.png)
+
+### Panel caja
+
+![Panel caja](docs/screenshots/05-panel-caja.png)
+
+### Panel administrador
+
+![Panel administrador](docs/screenshots/06-panel-admin.png)
+
+### Ticket digital
+
+![Ticket digital](docs/screenshots/07-ticket.png)
+
+### Administrador: corte de caja
+
+![Administrador: corte de caja](docs/screenshots/08-admin-corte.png)
+
+### Caja: cobro de la cuenta
+
+![Caja: cobro de la cuenta](docs/screenshots/09-caja-cobro.png)
+
+## Archivos de ejemplo
+
+Archivos reales generados por el sistema con la comanda demo (mesa T1, total $410.00, cobrada en efectivo):
+
+- [Reporte de corte de caja (PDF)](docs/ejemplos/Reporte_Corte_Caja_ejemplo.pdf): reporte generado desde el panel de administrador con el botón "Imprimir / Guardar PDF".
+- [Reporte de corte de caja (Excel)](docs/ejemplos/Reporte_Corte_Caja_ejemplo.xlsx): el mismo reporte en Excel, con 5 hojas (resumen general, formas de pago, rendimiento personal, cuentas cobradas y egresos).
+- [Ticket de compra (PDF)](docs/ejemplos/Ticket_ejemplo.pdf): ticket generado desde caja para la orden demo.
+
+## Manuales
+
+- [Manual de Usuario (PDF)](docs/manuales/Manual_de_Usuario.pdf): guía paso a paso para el personal del restaurante (mesero, cocina, barra, caja y administrador), con capturas de cada panel.
+- [Manual del Programador (PDF)](docs/manuales/Manual_del_Programador.pdf): instalación, arquitectura, estructura del proyecto, orden de los archivos y secuencia de ejecución, API REST, WebSocket y solución de problemas.
