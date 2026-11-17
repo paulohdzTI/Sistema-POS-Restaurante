@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Panel de Caja y Cobro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { 'verde-militar': '#4A5D23', 'cafe-madera': '#5C4033', 'gris-trinchera': '#808080', 'negro-carbon': '#1A1A1A', 'crema-rustico': '#F5F5DC' } } }
+        }
+    </script>
+    <style>
+        body, html { min-height: 100vh; margin: 0; background-color: #f9f8f6; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        .ticket-bg { background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 10px 10px; background-color: #ffffff; }
+        .ticket-border { border-top: 2px dashed #9ca3af; border-bottom: 2px dashed #9ca3af; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .slide-in { animation: slideIn 0.2s ease-out forwards; }
+    </style>
+</head>
+<body class="text-negro-carbon font-sans flex flex-col h-screen overflow-hidden bg-gray-100" id="body-caja">
+
+    <!-- CABECERA DE CAJA -->
+    <header class="bg-negro-carbon text-white h-16 px-4 flex justify-between items-center shadow-lg z-[50] border-b-2 border-emerald-500 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-emerald-600 p-2 rounded-full"><i data-lucide="calculator" class="w-5 h-5"></i></div>
+            <div class="flex flex-col">
+                <h1 class="font-bold text-xl leading-tight tracking-wide text-emerald-50">Caja y Cobro</h1>
+                <div class="flex items-center gap-1">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <p class="text-[10px] text-green-400 font-bold uppercase tracking-wider" id="conexion-estado">En línea</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2 md:gap-3">
+            <div class="flex items-center gap-1.5 bg-cafe-madera/80 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/10 shrink-0 hidden sm:flex">
+                <i data-lucide="user" class="w-3.5 h-3.5"></i>
+                <span class="text-xs md:text-sm font-bold truncate max-w-[100px]" id="nombre-usuario-header">...</span>
+            </div>
+            <button onclick="regresarAlPanel()" class="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 px-3 py-1.5 md:px-4 md:py-2 rounded-full font-bold text-xs md:text-sm transition shadow-md border border-gray-500">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> <span class="hidden md:inline">Regresar</span>
+            </button>
+            <button onclick="abrirCorteCaja()" class="md:hidden p-2 bg-amber-600 rounded-full shadow-md"><i data-lucide="archive" class="w-5 h-5"></i></button>
+        </div>
+    </header>
+
+    <!-- ÁREA PRINCIPAL: LISTA Y TICKET -->
+    <main class="flex-1 flex flex-col md:flex-row w-full h-[calc(100vh-64px)] overflow-hidden">
+        
+        <!-- PASO 1 / PANEL IZQ: CUENTAS PENDIENTES -->
+        <div id="caja-paso-1" class="w-full md:w-[35%] h-full bg-white flex flex-col relative border-r border-gray-200">
+            <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center shrink-0 shadow-sm z-10">
+                <h2 class="font-black text-lg text-cafe-madera uppercase tracking-widest"><i data-lucide="list-ordered" class="inline w-5 h-5 mr-2 -mt-1 text-emerald-600"></i>Cuentas Activas</h2>
+            </div>
+            <div id="lista-mesas-caja" class="p-4 flex-1 overflow-y-auto custom-scrollbar space-y-3 bg-[#f9f8f6] pb-24 md:pb-10">
+                <div class="flex flex-col items-center justify-center py-20 text-gray-400">
+                    <i data-lucide="loader-2" class="w-10 h-10 mb-2 animate-spin text-emerald-500"></i>
+                    <p class="font-bold text-center">Cargando cuentas...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASO 2 / PANEL DER: TICKET Y COBRO -->
+        <div id="caja-paso-2" class="w-full md:w-[65%] h-full bg-gray-100 flex flex-col relative hidden md:flex">
+            
+            <div class="md:hidden p-4 bg-emerald-700 text-white flex justify-between items-center shrink-0 shadow-md z-10">
+                <button onclick="volverAPaso1Caja()" class="p-2 bg-white/20 hover:bg-white/30 rounded-full transition"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                <h3 class="font-black text-xl">Detalle de Cobro</h3>
+                <div class="w-9"></div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col xl:flex-row gap-6 relative pb-28 md:pb-10" id="area-ticket">
+                
+                <div class="text-gray-400 font-bold flex flex-col items-center justify-center w-full text-center absolute inset-0 z-0 bg-gray-100" id="mensaje-caja-vacia">
+                    <i data-lucide="receipt" class="w-20 h-20 mb-4 opacity-20 text-emerald-700"></i>
+                    <p class="text-lg">Selecciona una orden del listado<br>para procesar el cobro.</p>
+                </div>
+                
+                <!-- TICKET FISICO -->
+                <div id="ticket-impresion" class="bg-white w-full xl:w-[45%] max-w-md xl:max-w-none shadow-xl ticket-bg hidden flex-col font-mono text-sm text-black shrink-0 h-fit mx-auto xl:mx-0 z-10 border border-gray-200">
+                    <div id="contenido-ticket-print">
+                        <div class="p-6 pb-4 text-center">
+                            <h2 class="font-black text-2xl uppercase tracking-widest text-black">Ticket de Compra</h2>
+                            <p class="text-xs mt-1 text-gray-600">Av. Lorenzo de la Paz</p>
+                            <p class="text-xs text-gray-600">San Luis Potosí, SLP</p>
+                        </div>
+                        <div class="px-6 py-3 ticket-border text-xs leading-relaxed font-semibold">
+                            <div class="flex justify-between"><span>Folio:</span><span id="t-folio">#000</span></div>
+                            <div class="flex justify-between"><span>Fecha:</span><span id="t-fecha">--/--/----</span></div>
+                            <div class="flex justify-between"><span>Origen:</span><span id="t-mesa">--</span></div>
+                            <div class="flex justify-between"><span>Atendió:</span><span id="t-mesero">--</span></div>
+                        </div>
+                        <div class="px-6 py-4">
+                            <table class="w-full text-left text-xs mb-2">
+                                <thead><tr class="border-b border-dashed border-gray-400 text-gray-600"><th class="py-1">CANT</th><th>DESCRIPCIÓN</th><th class="text-right">IMP</th></tr></thead>
+                                <tbody id="t-items"></tbody>
+                            </table>
+                        </div>
+                        <div class="px-6 pt-2 pb-6 ticket-border text-center bg-white">
+                            <div class="flex justify-between items-center mb-1 text-gray-600">
+                                <span class="font-bold text-sm">Subtotal:</span>
+                                <span class="font-bold text-sm" id="t-subtotal">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-3 text-emerald-700">
+                                <span class="font-bold text-sm">Propina:</span>
+                                <span class="font-bold text-sm" id="t-propina-agregada">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-4 border-t border-dashed border-gray-300 pt-2">
+                                <span class="font-black text-base uppercase">TOTAL:</span>
+                                <span class="font-black text-xl" id="t-total">$0.00</span>
+                            </div>
+                            
+                            <div class="text-[10px] text-gray-600 font-bold text-center mb-4 mt-2 bg-gray-50 p-2.5 border border-gray-200 rounded hidden" id="print-propina-sugerida">
+                                <p class="mb-2 text-center italic text-gray-500">Propina sugerida (No obligatoria):</p>
+                                <div class="grid grid-cols-3 gap-1.5">
+                                    <div class="flex flex-col items-center bg-white p-1.5 rounded border border-gray-200">
+                                        <span>5%: <span id="t-prop-5" class="text-gray-800 font-black">$0.00</span></span>
+                                        <span class="text-[9px] text-emerald-700 italic font-medium leading-tight mt-1">¡Gracias por tu visita!</span>
+                                    </div>
+                                    <div class="flex flex-col items-center bg-white p-1.5 rounded border border-gray-200">
+                                        <span>10%: <span id="t-prop-10" class="text-gray-800 font-black">$0.00</span></span>
+                                        <span class="text-[9px] text-emerald-700 italic font-medium leading-tight mt-1">¡Gracias por valorar nuestro servicio!</span>
+                                    </div>
+                                    <div class="flex flex-col items-center bg-white p-1.5 rounded border border-gray-200">
+                                        <span>15%: <span id="t-prop-15" class="text-gray-800 font-black">$0.00</span></span>
+                                        <span class="text-[9px] text-emerald-700 italic font-medium leading-tight mt-1">¡Mil gracias por tu generosidad, te esperamos pronto!</span>
+                                    </div>
+                                </div>
+                                
+                            </div>
+
+                            <div class="flex flex-col items-center justify-center mb-3 mt-4">
+                                <img id="t-qr" crossorigin="anonymous" src="" alt="QR Maps" class="w-24 h-24 border border-gray-300 p-1 bg-white mb-2">
+                                <span class="text-[10px] font-black uppercase text-center leading-tight">¡Escanea este QR y<br>déjanos tu opinión en Maps!</span>
+                            </div>
+                            <p class="font-bold text-xs mt-3 italic">¡Gracias por tu preferencia!</p>
+                            <p class="font-bold text-xs mt-3 italic">Este no es un comprobante fiscal.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTROLES DE PAGO Y PROPINA -->
+                <div id="controles-pago" class="w-full xl:w-[55%] flex-col gap-4 hidden h-fit z-10">
+                    
+                    <!-- Propinas -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+                        <h4 class="font-black text-gray-700 mb-3 flex items-center gap-2"><i data-lucide="heart-handshake" class="w-5 h-5 text-rose-500"></i> Agregar Propina</h4>
+                        <div class="grid grid-cols-3 gap-3 mb-3">
+                            <button onclick="seleccionarPropina(5, this)" class="btn-prop py-2.5 border border-gray-200 text-gray-600 rounded-xl font-black text-sm md:text-base hover:bg-emerald-50 hover:border-emerald-200 transition">5%</button>
+                            <button onclick="seleccionarPropina(10, this)" class="btn-prop py-2.5 border border-gray-200 text-gray-600 rounded-xl font-black text-sm md:text-base hover:bg-emerald-50 hover:border-emerald-200 transition">10%</button>
+                            <button onclick="seleccionarPropina(15, this)" class="btn-prop py-2.5 border border-gray-200 text-gray-600 rounded-xl font-black text-sm md:text-base hover:bg-emerald-50 hover:border-emerald-200 transition">15%</button>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-4 top-3 font-black text-gray-400 text-lg">$</span>
+                            <input type="number" id="propina-manual-caja" placeholder="Otra cantidad..." class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl text-base font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" oninput="limpiarBotonesPropina()">
+                        </div>
+                    </div>
+                    
+                    <!-- Método de Pago -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+                        <h4 class="font-black text-gray-700 mb-3 flex items-center gap-2"><i data-lucide="credit-card" class="w-5 h-5 text-blue-500"></i> Método de Pago</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <button onclick="seleccionarMetodo('Efectivo', this)" class="btn-metodo py-3 md:py-4 border-2 border-blue-500 bg-blue-50 text-blue-700 rounded-xl font-black text-sm transition flex flex-col items-center justify-center gap-1"><i data-lucide="banknote" class="w-5 h-5"></i> Efectivo</button>
+                            <button onclick="seleccionarMetodo('Tarjeta', this)" class="btn-metodo py-3 md:py-4 border border-gray-200 text-gray-600 rounded-xl font-black text-sm hover:bg-gray-50 transition flex flex-col items-center justify-center gap-1"><i data-lucide="credit-card" class="w-5 h-5"></i> Tarjeta</button>
+                            <button onclick="seleccionarMetodo('Transferencia', this)" class="btn-metodo py-3 md:py-4 border border-gray-200 text-gray-600 rounded-xl font-black text-sm hover:bg-gray-50 transition flex flex-col items-center justify-center gap-1"><i data-lucide="smartphone-nfc" class="w-5 h-5"></i> Transf.</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Acciones Digitales y Cobro -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col gap-3">
+                        <h4 class="font-black text-gray-700 mb-1 flex items-center gap-2"><i data-lucide="share-2" class="w-5 h-5 text-indigo-500"></i> Opciones del Ticket</h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button onclick="imprimirTicketMiniprinter()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition flex flex-col items-center justify-center border border-gray-300">
+                                <i data-lucide="printer" class="w-5 h-5 mb-1 text-gray-600"></i> <span class="text-[10px] uppercase tracking-wider">Imprimir</span>
+                            </button>
+                            <button onclick="enviarTicketWhatsApp()" class="bg-[#E8F8F5] hover:bg-[#D1F2EB] text-[#117A65] font-bold py-3 rounded-xl transition flex flex-col items-center justify-center border border-[#A3E4D7]">
+                                <i data-lucide="message-circle" class="w-5 h-5 mb-1"></i> <span class="text-[10px] uppercase tracking-wider">WhatsApp</span>
+                            </button>
+                            <button onclick="enviarTicketSMS()" class="bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-3 rounded-xl transition flex flex-col items-center justify-center border border-amber-200">
+                                <i data-lucide="smartphone" class="w-5 h-5 mb-1"></i> <span class="text-[10px] uppercase tracking-wider">SMS</span>
+                            </button>
+                            <button onclick="enviarTicketCorreo()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-3 rounded-xl transition flex flex-col items-center justify-center border border-indigo-200">
+                                <i data-lucide="mail" class="w-5 h-5 mb-1"></i> <span class="text-[10px] uppercase tracking-wider">Correo</span>
+                            </button>
+                        </div>
+                        <button id="btn-cobrar" onclick="procesarPago()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 rounded-xl shadow-lg active:scale-95 transition-transform text-xl flex items-center justify-center gap-3 mt-2 uppercase tracking-widest border border-emerald-800">
+                            <i data-lucide="check-circle" class="w-6 h-6"></i> COBRAR <span id="btn-cobrar-total">$0.00</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Inicialización y Seguridad de Sesión
+        function initSession() {
+            let n = sessionStorage.getItem('usuarioNombre'); let r = sessionStorage.getItem('usuarioRol');
+            if(!n) { n = localStorage.getItem('usuarioNombre'); r = localStorage.getItem('usuarioRol');
+                if(n) { sessionStorage.setItem('usuarioNombre', n); sessionStorage.setItem('usuarioRol', r); }
+            } return {nombre: n, rol: r};
+        }
+        
+        const sessionInfo = initSession();
+        const nombre = sessionInfo.nombre;
+        const rol = sessionInfo.rol;
+
+        if (!nombre) {
+            window.location.href = "login.html";
+        } else {
+            document.getElementById('nombre-usuario-header').textContent = nombre.split(" ")[0];
+            lucide.createIcons();
+        }
+
+        const hostBackend = window.location.hostname || "127.0.0.1"; 
+        const API_URL = `http://${hostBackend}:8000/api`;
+        const WS_URL = `ws://${hostBackend}:8000/ws/comandas`;
+        
+        let socket;
+        let ordenSeleccionadaParaCobro = null;
+        let datosCuentaOriginal = null;
+        let totalCuentaActual = 0;
+        let propinaSeleccionada = 0;
+        let metodoPagoSeleccionado = 'Efectivo';
+
+       // Funciones de Navegación
+        function regresarAlPanel() {
+            if (rol === 'administrador') window.location.href = 'panel_admin.html';
+            else if (rol === 'mesero') window.location.href = 'panel_mesero.html';
+            else if (rol === 'cocinera') window.location.href = 'panel_cocina.html';
+            else window.location.href = 'panel_barra.html';
+        }
+
+        // WebSockets para actualizar lista automáticamente
+        function iniciarWebSocket() {
+            socket = new WebSocket(WS_URL);
+            socket.onopen = () => { document.getElementById('conexion-estado').textContent = "🟢 Conectado"; };
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                // Si entra una nueva orden o se cobra/libera una mesa, refrescamos
+                if (data.tipo === "NUEVA_COMANDA_BARRA" || data.tipo === "NUEVA_COMANDA_COCINA" || data.tipo === "MESA_LIBERADA" || data.tipo === "MESA_PAGADA" || data.tipo === "CORTE_CAJA_REALIZADO") {
+                    cargarMesasParaCobro();
+                }
+            };
+            socket.onclose = () => { setTimeout(iniciarWebSocket, 3000); };
+        }
+
+        function formatoMesa(idMesa) {
+            if (idMesa === 'Delivery') return 'Delivery Local';
+            if (idMesa.startsWith('T')) return `Mesa ${idMesa.replace('T', '')} (Terraza)`;
+            if (idMesa.startsWith('P')) return `Mesa ${idMesa.replace('P', '')} (Patio)`;
+            if (idMesa.startsWith('S')) return `Sala ${idMesa.replace('S', '')}`;
+            return `Mesa ${idMesa}`;
+        }
+
+        // ================= FLUJO PRINCIPAL: CARGA Y TICKET =================
+        async function cargarMesasParaCobro() {
+            try {
+                const res = await fetch(`${API_URL}/caja/pendientes?t=${new Date().getTime()}`);
+                const cuentas = await res.json();
+                
+                const lista = document.getElementById('lista-mesas-caja');
+                if (cuentas.length === 0) {
+                    lista.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-gray-400"><i data-lucide="check-circle" class="w-16 h-16 mb-2 opacity-30 text-emerald-500"></i><p class="font-bold text-center">Todo cobrado.<br>No hay cuentas pendientes.</p></div>`;
+                    lucide.createIcons();
+                    return;
+                }
+                
+                lista.innerHTML = cuentas.map(c => {
+                    const esDelivery = String(c.mesa).toUpperCase() === 'DELIVERY';
+                    const iconColor = esDelivery ? 'text-rose-500 bg-rose-50' : 'text-emerald-600 bg-emerald-50';
+                    const iconName = esDelivery ? 'bike' : 'utensils';
+                    
+                    return `
+                    <button data-orden="${c.orden_id}" onclick="generarTicketCaja(${c.orden_id})" class="btn-cuenta-caja w-full text-left p-4 bg-white border rounded-2xl hover:border-emerald-500 hover:shadow-lg transition active:scale-95 flex items-center gap-4 ${c.orden_id === ordenSeleccionadaParaCobro ? 'border-emerald-500 ring-2 ring-emerald-200 bg-emerald-50/40' : 'border-gray-200'}">
+                        <div class="p-3 rounded-full ${iconColor} border border-gray-100 hidden sm:block shrink-0"><i data-lucide="${iconName}" class="w-6 h-6"></i></div>
+                        <div class="flex-1">
+                            <span class="font-black text-lg text-cafe-madera leading-tight">${formatoMesa(c.mesa)}</span>
+                            <div class="flex flex-col mt-1 gap-0.5">
+                                <span class="text-[11px] font-bold text-gray-500 uppercase tracking-widest"><i data-lucide="user" class="inline w-3 h-3 mr-1 -mt-0.5"></i>Atiende: ${c.mesero}</span>
+                                <span class="text-[13px] font-black text-emerald-700"><i data-lucide="calculator" class="inline w-3.5 h-3.5 mr-1 -mt-0.5"></i>Subtotal: $${c.total.toFixed(2)}</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end justify-between h-full">
+                            <span class="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-md text-gray-500 border border-gray-200 uppercase tracking-widest">#${c.orden_id}</span>
+                            <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400 mt-3"></i>
+                        </div>
+                    </button>
+                `}).join('');
+                lucide.createIcons();
+            } catch (e) {}
+        }
+
+        async function generarTicketCaja(ordenId) {
+            ordenSeleccionadaParaCobro = ordenId;
+            propinaSeleccionada = 0;
+            metodoPagoSeleccionado = 'Efectivo';
+            document.getElementById('propina-manual-caja').value = '';
+            limpiarBotonesPropina();
+            seleccionarMetodo('Efectivo', document.querySelector('.btn-metodo'));
+
+            // Control vista móvil
+            document.getElementById('caja-paso-1').classList.add('hidden', 'md:flex'); document.getElementById('caja-paso-1').classList.remove('flex');
+            resaltarCuentaSeleccionada(ordenId);
+            document.getElementById('caja-paso-2').classList.remove('hidden'); document.getElementById('caja-paso-2').classList.add('flex');
+            document.getElementById('mensaje-caja-vacia').classList.add('hidden');
+            
+            const ticketUI = document.getElementById('ticket-impresion');
+            const controlesUI = document.getElementById('controles-pago');
+            
+            try {
+                const res = await fetch(`${API_URL}/cuenta/${ordenId}`);
+                const cuenta = await res.json();
+                
+                if(cuenta.error) { alert("Error al cargar la cuenta. Puede que ya haya sido pagada."); volverAPaso1Caja(); return; }
+
+                datosCuentaOriginal = cuenta;
+                totalCuentaActual = cuenta.total;
+
+                // Llenar ticket visual
+                document.getElementById('t-folio').textContent = `#${cuenta.orden_id}`;
+                document.getElementById('t-fecha').textContent = `${cuenta.fecha} ${cuenta.hora}`;
+                document.getElementById('t-mesa').textContent = formatoMesa(cuenta.mesa);
+                document.getElementById('t-mesero').textContent = cuenta.mesero;
+                
+                const tbody = document.getElementById('t-items');
+                tbody.innerHTML = cuenta.items.map(i => `
+                    <tr class="border-b border-gray-100 last:border-0">
+                        <td class="py-1.5 align-top">${i.cantidad}</td>
+                        <td class="py-1.5 pr-1 font-bold break-words leading-tight text-[11px] md:text-xs">${i.producto}</td>
+                        <td class="text-right align-top font-black">$${i.importe.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+                
+                // Setear totales base
+                document.getElementById('t-subtotal').textContent = `$${cuenta.total.toFixed(2)}`;
+                document.getElementById('t-propina-agregada').textContent = `$0.00`;
+                document.getElementById('t-total').textContent = `$${cuenta.total.toFixed(2)}`;
+                
+                // Mostrar propinas sugeridas en el ticket web para que el cajero se las lea al cliente
+                document.getElementById('print-propina-sugerida').classList.remove('hidden');
+                document.getElementById('t-prop-5').textContent = `$${(cuenta.total * 0.05).toFixed(2)}`;
+                document.getElementById('t-prop-10').textContent = `$${(cuenta.total * 0.10).toFixed(2)}`;
+                document.getElementById('t-prop-15').textContent = `$${(cuenta.total * 0.15).toFixed(2)}`;
+
+                // QR Google Maps
+                const urlMaps = "https://maps.app.goo.gl/JTaVWceh3rGhNw6W8";
+                document.getElementById('t-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(urlMaps)}`;
+
+                ticketUI.classList.remove('hidden'); ticketUI.classList.add('flex');
+                controlesUI.classList.remove('hidden'); controlesUI.classList.add('flex');
+                actualizarBotonCobrar();
+            } catch (e) { 
+                alert("Hubo un error de conexión."); 
+                volverAPaso1Caja(); 
+            }
+        }
+
+        function resaltarCuentaSeleccionada(ordenId) {
+            document.querySelectorAll('.btn-cuenta-caja').forEach(b => {
+                const activa = ordenId !== null && String(b.dataset.orden) === String(ordenId);
+                b.classList.toggle('border-emerald-500', activa);
+                b.classList.toggle('ring-2', activa);
+                b.classList.toggle('ring-emerald-200', activa);
+                b.classList.toggle('bg-emerald-50/40', activa);
+                b.classList.toggle('border-gray-200', !activa);
+            });
+        }
+
+        function volverAPaso1Caja() {
+            document.getElementById('caja-paso-2').classList.add('hidden'); 
+            document.getElementById('caja-paso-2').classList.remove('flex');
+            document.getElementById('caja-paso-1').classList.add('flex');
+            document.getElementById('caja-paso-1').classList.remove('hidden', 'md:flex');
+            resaltarCuentaSeleccionada(null);
+        }
+
+        // ================= MANEJO DE PROPINAS =================
+        function limpiarBotonesPropina() {
+            document.querySelectorAll('.btn-prop').forEach(b => {
+                b.classList.remove('bg-emerald-600', 'text-white', 'border-emerald-700', 'shadow-md', 'ring-2', 'ring-emerald-300');
+                b.classList.add('border-gray-200', 'text-gray-600', 'hover:bg-emerald-50', 'hover:border-emerald-200');
+            });
+        }
+
+        function seleccionarPropina(porcentaje, btn) {
+            const yaSeleccionado = btn.classList.contains('bg-emerald-600');
+            limpiarBotonesPropina();
+
+            if (yaSeleccionado) {
+                propinaSeleccionada = 0;
+                actualizarBotonCobrar();
+                return;
+            }
+
+            btn.classList.remove('border-gray-200', 'text-gray-600', 'hover:bg-emerald-50', 'hover:border-emerald-200');
+            btn.classList.add('bg-emerald-600', 'text-white', 'border-emerald-700', 'shadow-md', 'ring-2', 'ring-emerald-300');
+            document.getElementById('propina-manual-caja').value = '';
+            propinaSeleccionada = (totalCuentaActual * porcentaje) / 100;
+            actualizarBotonCobrar();
+        }
+
+        document.getElementById('propina-manual-caja').addEventListener('keydown', function(e) {
+            if (e.key === '-' || e.key === 'e') e.preventDefault();
+        });
+
+        document.getElementById('propina-manual-caja').addEventListener('input', function() {
+            let valor = parseFloat(this.value);
+            if (valor < 0) {
+                this.value = '';
+                valor = 0;
+            }
+            propinaSeleccionada = Math.max(0, valor || 0);
+            actualizarBotonCobrar();
+        });
+
+        function seleccionarMetodo(metodo, btn) {
+            metodoPagoSeleccionado = metodo;
+            document.querySelectorAll('.btn-metodo').forEach(b => {
+                b.classList.remove('border-blue-500', 'border-2', 'bg-blue-50', 'text-blue-700');
+                b.classList.add('border-gray-200', 'border', 'text-gray-600');
+            });
+            btn.classList.remove('border-gray-200', 'border', 'text-gray-600');
+            btn.classList.add('border-blue-500', 'border-2', 'bg-blue-50', 'text-blue-700');
+        }
+
+        function actualizarBotonCobrar() {
+            const granTotal = totalCuentaActual + propinaSeleccionada;
+            document.getElementById('btn-cobrar-total').textContent = `$${granTotal.toFixed(2)}`;
+            
+            // Actualizar vista en el ticket para imprimir
+            document.getElementById('t-propina-agregada').textContent = `$${propinaSeleccionada.toFixed(2)}`;
+            document.getElementById('t-total').textContent = `$${granTotal.toFixed(2)}`;
+        }
+
+        // ================= ENVÍO DIGITAL Y FÍSICO =================
+        function crearMensajeDigital(esPlano = false) {
+            if(!datosCuentaOriginal) return "";
+            const b = esPlano ? "" : "*";
+            const urlTicketPDF = `http://${hostBackend}:8000/api/ticket/${datosCuentaOriginal.orden_id}`;
+            
+            let msj = `${b}¡GRACIAS POR TU VISITA!${b}\n\n`;
+            msj += `Fue un verdadero gusto atenderte hoy. Aquí tienes  el enlace para ver y descargar tu ${b}Ticket de Compra${b}.\n\n`;
+            msj += `--${b}DESCARGA TU TICKET PDF AQUÍ:${b}\n`;
+            msj += `${urlTicketPDF}\n\n`;
+            msj += `--${b}RECOMENDACIONES PARA TU PRÓXIMA VISITA:${b}\n`;
+            msj += `No te quedes sin probar:\n${b}*Los Tacos de Arrachera${b}\n${b}*El Tradicional Pozole${b}\n${b}*Micheladas y Mojitos${b}\n\n`;
+            msj += `--${b}¡TU OPINIÓN NOS AYUDA A MEJORAR!${b}\n`;
+            msj += `Regálanos tu reseña en Google Maps aquí:\n https://maps.app.goo.gl/JTaVWceh3rGhNw6W8\n\n`;
+            msj += `¡Te esperamos pronto de vuelta en casa!`;
+            return encodeURIComponent(msj);
+        }
+
+        function enviarTicketWhatsApp() {
+            if (!datosCuentaOriginal) return;
+            const inputTel = prompt("Ingresa el número de WhatsApp del cliente (10 dígitos obligatorios):", "");
+            if (inputTel === null) return; // Si presiona Cancelar
+            
+            const limpio = inputTel.replace(/\D/g, "");
+            if (limpio.length !== 10) {
+                alert("Debes ingresar obligatoriamente un número válido de 10 dígitos.");
+                return;
+            }
+
+            const msj = crearMensajeDigital(false);
+            const telefonoFinal = `52${limpio}`;
+            window.location.href = `https://wa.me/${telefonoFinal}?text=${msj}`;
+        }
+
+        function enviarTicketSMS() {
+            if (!datosCuentaOriginal) return;
+            const inputTel = prompt("Ingresa el número celular del cliente (10 dígitos obligatorios) para enviar SMS:", "");
+            if (inputTel === null) return; // Si presiona Cancelar
+
+            const limpio = inputTel.replace(/\D/g, "");
+            if (limpio.length !== 10) {
+                alert("Debes ingresar obligatoriamente un número válido de 10 dígitos.");
+                return;
+            }
+
+            const telefonoFinal = `+52${limpio}`;
+            const msj = crearMensajeDigital(true);
+            window.location.href = `sms:${telefonoFinal}?&body=${msj}`;
+        }
+
+        function enviarTicketCorreo() {
+            if (!datosCuentaOriginal) return;
+            const correoCliente = prompt("Ingresa el correo electrónico del cliente (obligatorio):", "");
+            if (correoCliente === null) return; // Si presiona Cancelar
+
+            const correoLimpio = correoCliente.trim();
+            const regexCorreo = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!regexCorreo.test(correoLimpio)) {
+                alert("Debes ingresar obligatoriamente un correo electrónico válido (ejemplo: cliente@correo.com).");
+                return;
+            }
+
+            const msj = crearMensajeDigital(true);
+            const asunto = encodeURIComponent(`Tu Ticket de Compra #${datosCuentaOriginal.orden_id}`);
+            window.location.href = `mailto:${correoLimpio}?subject=${asunto}&body=${msj}`;
+        }
+
+        function imprimirTicketMiniprinter() {
+            // Ocultar sección de propina sugerida temporalmente para que no salga en la impresora
+            const sugeridaDiv = document.getElementById('print-propina-sugerida');
+            sugeridaDiv.classList.add('hidden');
+            
+            const contenido = document.getElementById('contenido-ticket-print').innerHTML;
+            sugeridaDiv.classList.remove('hidden'); // Restaurar
+            
+            const ventana = window.open('', '_blank', 'width=350,height=600');
+            if(!ventana) { alert("Por favor habilita los pop-ups en tu navegador para imprimir."); return; }
+            
+            ventana.document.open();
+            
+            // LA CORRECCIÓN CLAVE: Escribir el HTML línea por línea dividiendo las etiquetas de cerrado
+            ventana.document.write("<!DOCTYPE html><html>");
+            ventana.document.write("<he" + "ad>");
+            ventana.document.write("<title>Ticket de Compra</title>");
+            ventana.document.write("<st" + "yle>");
+            ventana.document.write("body { width: 80mm; font-family: monospace; font-size: 13px; color: black; margin: 0; padding: 10px; background: white; }");
+            ventana.document.write(".ticket-border { border-top: 2px dashed black; border-bottom: 2px dashed black; padding-top:10px; margin-top:10px; padding-bottom:10px;}");
+            ventana.document.write(".flex { display: flex; } .flex-col { flex-direction: column; } .items-center { align-items: center; } .justify-center { justify-content: center; } .justify-between { justify-content: space-between; } .font-bold { font-weight: bold; } .font-black { font-weight: 900; } .text-center { text-align: center; } .uppercase { text-transform: uppercase; }");
+            ventana.document.write("table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px;} th { text-align: left; border-bottom: 1px dashed black; padding-bottom: 5px; } td { padding-top: 5px; } .text-right { text-align: right; }");
+            ventana.document.write("img { display: block; margin: 10px auto; width: 120px; height: 120px; } .mb-2 { margin-bottom: 10px; } .mb-3 { margin-bottom: 15px; } .mt-3 { margin-top: 15px; } .text-xs { font-size: 11px; } .italic { font-style: italic; } .hidden {display: none;}");
+            ventana.document.write("</st" + "yle>");
+            ventana.document.write("</he" + "ad>");
+            ventana.document.write("<bo" + "dy onload='window.print(); window.close();'>");
+            ventana.document.write(contenido);
+            ventana.document.write("</bo" + "dy>");
+            ventana.document.write("</html>");
+            
+            ventana.document.close();
+        }
+
+        // ================= PROCESAMIENTO FINAL (COBRAR) =================
+        async function procesarPago() {
+            if(!ordenSeleccionadaParaCobro) return;
+            const granTotal = (totalCuentaActual + propinaSeleccionada).toFixed(2);
+            
+            if(confirm(`CONFIRMACIÓN DE COBRO\n\nTotal a cobrar: $${granTotal}\nMétodo: ${metodoPagoSeleccionado}\nPropina incluida: $${propinaSeleccionada.toFixed(2)}\n\n¿Deseas procesar el pago y liberar la mesa?`)) {
+                try {
+                    const btn = document.getElementById('btn-cobrar');
+                    btn.disabled = true; btn.innerHTML = `<i data-lucide="loader-2" class="w-6 h-6 animate-spin"></i> PROCESANDO...`; lucide.createIcons();
+                    
+                    const payload = { metodo_pago: metodoPagoSeleccionado, propina: propinaSeleccionada };
+                    
+                    // Llama al backend para registrar la venta, sumar propina global, marcar pagado y mandar mesa a limpieza
+                    await fetch(`${API_URL}/pagar/${ordenSeleccionadaParaCobro}`, { 
+                        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+                    });
+                    
+                    alert("¡Cobro exitoso! El recibo se guardó en el Corte de Caja y la mesa se mandó a Limpieza.");
+                    
+                    volverAPaso1Caja();
+                    document.getElementById('ticket-impresion').classList.remove('flex'); document.getElementById('ticket-impresion').classList.add('hidden');
+                    document.getElementById('controles-pago').classList.remove('flex'); document.getElementById('controles-pago').classList.add('hidden');
+                    document.getElementById('mensaje-caja-vacia').classList.remove('hidden');
+                    ordenSeleccionadaParaCobro = null;
+                    datosCuentaOriginal = null;
+                    
+                    cargarMesasParaCobro();
+                    btn.disabled = false; btn.innerHTML = `<i data-lucide="check-circle" class="w-6 h-6"></i> COBRAR <span id="btn-cobrar-total">$0.00</span>`; lucide.createIcons();
+                } catch (e) { alert("Error de servidor al procesar el pago."); }
+            }
+        }
+
+        // Inicialización
+        cargarMesasParaCobro();
+        iniciarWebSocket();
+    </script>
+</body>
+</html>

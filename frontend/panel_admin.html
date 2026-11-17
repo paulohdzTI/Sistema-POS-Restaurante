@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Panel de Administración y Corte - POS Restaurante</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'verde-militar': '#4A5D23',
+                        'cafe-madera': '#5C4033',
+                        'gris-trinchera': '#808080',
+                        'negro-carbon': '#1A1A1A',
+                        'crema-rustico': '#F5F5DC'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body, html { min-height: 100vh; margin: 0; background-color: #f3f4f6; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="text-negro-carbon font-sans hidden flex-col min-h-screen" id="body-admin">
+
+    <!-- CABECERA PRINCIPAL -->
+    <header class="sticky top-0 bg-negro-carbon text-white h-16 px-4 md:px-6 flex justify-between items-center shadow-lg z-[50] border-b-2 border-amber-500">
+        <div class="flex items-center gap-3">
+            <div class="bg-amber-600 p-2 rounded-xl shadow-md">
+                <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-black text-lg md:text-xl leading-tight tracking-wide text-amber-50">Panel de Administrador</h1>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <p class="text-[10px] text-green-400 font-bold uppercase tracking-wider" id="conexion-estado">En línea</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 md:gap-3">
+            <button onclick="recargarTodo()" class="p-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-full border border-gray-700 transition" title="Actualizar datos">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+            <div class="hidden sm:flex items-center gap-1.5 bg-cafe-madera/90 px-3.5 py-1.5 rounded-full border border-white/10">
+                <i data-lucide="user-check" class="w-4 h-4 text-amber-300"></i>
+                <span class="text-xs md:text-sm font-bold truncate max-w-[120px]" id="nombre-usuario-header">Admin</span>
+            </div>
+            <button onclick="cerrarSesion()" class="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 rounded-full font-bold text-xs md:text-sm transition shadow-md">
+                <i data-lucide="log-out" class="w-4 h-4"></i> <span class="hidden md:inline">Salir</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
+
+        <!-- SECCIÓN 1: ACCESO DIRECTO A LOS 4 PANELES OPERATIVOS -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b border-gray-100 pb-3">
+                <div>
+                    <h2 class="text-base md:text-lg font-black text-cafe-madera uppercase tracking-wide flex items-center gap-2">
+                        <i data-lucide="layout-grid" class="w-5 h-5 text-amber-600"></i> Acceso a Módulos Operativos
+                    </h2>
+                    <p class="text-xs text-gray-500 font-medium">Ingresa a cualquier área para operar en tiempo real con permisos de administrador.</p>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-bold">
+                    <span class="px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200" id="badge-mesas-activas">0 Mesas Activas</span>
+                    <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200" id="badge-cuentas-pendientes">0 Cuentas por Cobrar</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Panel Mesero -->
+                <a href="panel_mesero.html" class="group p-4 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-stone-50 hover:border-verde-militar hover:shadow-md transition flex items-center gap-4">
+                    <div class="p-3.5 rounded-xl bg-verde-militar/10 text-verde-militar group-hover:bg-verde-militar group-hover:text-white transition">
+                        <i data-lucide="utensils" class="w-6 h-6"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-black text-base text-gray-800 group-hover:text-verde-militar transition">Panel Mesero</h3>
+                        <p class="text-xs text-gray-500 font-medium">Mapa de mesas y comandas</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition"></i>
+                </a>
+
+                <!-- Panel Cocina -->
+                <a href="panel_cocina.html" class="group p-4 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-orange-50/30 hover:border-orange-600 hover:shadow-md transition flex items-center gap-4">
+                    <div class="p-3.5 rounded-xl bg-orange-100 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition">
+                        <i data-lucide="chef-hat" class="w-6 h-6"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-black text-base text-gray-800 group-hover:text-orange-600 transition">Panel Cocina</h3>
+                        <p class="text-xs text-gray-500 font-medium">KDS alimentos y agotados</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition"></i>
+                </a>
+
+                <!-- Panel Barra -->
+                <a href="panel_barra.html" class="group p-4 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-indigo-50/30 hover:border-indigo-600 hover:shadow-md transition flex items-center gap-4">
+                    <div class="p-3.5 rounded-xl bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition">
+                        <i data-lucide="wine" class="w-6 h-6"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-black text-base text-gray-800 group-hover:text-indigo-600 transition">Panel Barra</h3>
+                        <p class="text-xs text-gray-500 font-medium">Bebidas y Delivery local</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition"></i>
+                </a>
+
+                <!-- Panel Caja -->
+                <a href="panel_caja.html" class="group p-4 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-emerald-50/40 hover:border-emerald-600 hover:shadow-md transition flex items-center gap-4">
+                    <div class="p-3.5 rounded-xl bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition">
+                        <i data-lucide="calculator" class="w-6 h-6"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-black text-base text-gray-800 group-hover:text-emerald-700 transition">Panel Caja</h3>
+                        <p class="text-xs text-gray-500 font-medium">Cobro, tickets y facturación</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition"></i>
+                </a>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: BARRA DE ACCIONES DE CORTE Y EXPORTACIÓN (PDF / XML / CORTE FINAL) -->
+        <section class="bg-gradient-to-r from-negro-carbon to-cafe-madera text-white rounded-2xl p-5 shadow-lg flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+                <span class="text-[11px] font-black uppercase tracking-widest text-amber-400 bg-white/10 px-2.5 py-1 rounded-md">Centro Financiero y Cierre de Turno</span>
+                <h2 class="text-xl md:text-2xl font-black mt-1">Corte de Caja General</h2>
+                <p class="text-xs text-gray-300 mt-0.5" id="fecha-actual-corte">Cargando fecha del corte...</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                <button onclick="descargarReportePDF()" class="flex-1 sm:flex-initial bg-white text-negro-carbon hover:bg-gray-100 font-black px-4 py-3 rounded-xl text-xs md:text-sm flex items-center justify-center gap-2 shadow-md transition active:scale-95">
+                    <i data-lucide="file-text" class="w-4 h-4 text-red-600"></i> Imprimir / Guardar PDF
+                </button>
+                <button onclick="descargarReporteExcel()" class="flex-1 sm:flex-initial bg-amber-500 hover:bg-amber-400 text-negro-carbon font-black px-4 py-3 rounded-xl text-xs md:text-sm flex items-center justify-center gap-2 shadow-md transition active:scale-95">
+                    <i data-lucide="file-code" class="w-4 h-4"></i> Descargar EXCEL
+                </button>
+                <button onclick="ejecutarCorteDiaCompleto()" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-black px-5 py-3 rounded-xl text-xs md:text-sm flex items-center justify-center gap-2 shadow-lg border border-red-400/40 transition active:scale-95">
+                    <i data-lucide="scissors" class="w-4 h-4"></i> Realizar Corte
+                </button>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: TARJETAS KPI FINANCIERAS -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <!-- Ingresos por Ventas -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-black text-gray-400 uppercase tracking-wider">Ingresos Ventas</span>
+                    <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><i data-lucide="trending-up" class="w-5 h-5"></i></div>
+                </div>
+                <p class="text-2xl md:text-3xl font-black text-emerald-700 mt-2" id="kpi-ingresos">$0.00</p>
+                <p class="text-[11px] font-bold text-gray-500 mt-1" id="kpi-num-cuentas">0 cuentas cobradas</p>
+            </div>
+
+            <!-- Egresos / Gastos -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-black text-gray-400 uppercase tracking-wider">Egresos / Gastos</span>
+                    <div class="p-2 bg-red-50 text-red-600 rounded-lg"><i data-lucide="trending-down" class="w-5 h-5"></i></div>
+                </div>
+                <p class="text-2xl md:text-3xl font-black text-red-600 mt-2" id="kpi-egresos">$0.00</p>
+                <p class="text-[11px] font-bold text-gray-500 mt-1" id="kpi-num-egresos">0 gastos registrados</p>
+            </div>
+
+            <!-- Propinas Recaudadas -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-black text-gray-400 uppercase tracking-wider">Propinas Turno</span>
+                    <div class="p-2 bg-amber-50 text-amber-600 rounded-lg"><i data-lucide="heart-handshake" class="w-5 h-5"></i></div>
+                </div>
+                <p class="text-2xl md:text-3xl font-black text-amber-600 mt-2" id="kpi-propinas">$0.00</p>
+                <p class="text-[11px] font-bold text-gray-500 mt-1">Acumulado para personal</p>
+            </div>
+
+            <!-- Efectivo Físico en Caja -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-black text-gray-400 uppercase tracking-wider">Efectivo en Caja</span>
+                    <div class="p-2 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="banknote" class="w-5 h-5"></i></div>
+                </div>
+                <p class="text-2xl md:text-3xl font-black text-blue-700 mt-2" id="kpi-efectivo-caja">$0.00</p>
+                <p class="text-[11px] font-bold text-gray-500 mt-1">Ventas Efectivo - Egresos</p>
+            </div>
+
+            <!-- Balance Neto General -->
+            <div class="bg-white p-5 rounded-2xl border-2 border-verde-militar/40 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-black text-verde-militar uppercase tracking-wider">Balance Neto</span>
+                    <div class="p-2 bg-verde-militar text-white rounded-lg"><i data-lucide="wallet" class="w-5 h-5"></i></div>
+                </div>
+                <p class="text-2xl md:text-3xl font-black text-negro-carbon mt-2" id="kpi-balance-neto">$0.00</p>
+                <p class="text-[11px] font-bold text-verde-militar mt-1">Ingresos Ventas - Egresos</p>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 4: GRÁFICOS VISUALES DEL CORTE -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Gráfico 1: Formas de Pago -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
+                <h3 class="font-black text-sm text-cafe-madera uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <i data-lucide="pie-chart" class="w-4 h-4 text-blue-600"></i> Ingresos por Forma de Pago
+                </h3>
+                <div class="relative flex-1 min-h-[240px] flex items-center justify-center">
+                    <canvas id="chartFormasPago"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 2: Comparativa Ingresos vs Egresos vs Propinas -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
+                <h3 class="font-black text-sm text-cafe-madera uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-600"></i> Flujo Financiero del Día
+                </h3>
+                <div class="relative flex-1 min-h-[240px] flex items-center justify-center">
+                    <canvas id="chartFlujoFinanciero"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 3: Ventas y Propinas por Mesero/Cajero -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
+                <h3 class="font-black text-sm text-cafe-madera uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <i data-lucide="users" class="w-4 h-4 text-amber-600"></i> Desempeño por Personal
+                </h3>
+                <div class="relative flex-1 min-h-[240px] flex items-center justify-center">
+                    <canvas id="chartPersonal"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 5: TABLA DESGLOSE DE FORMAS DE PAGO Y REGISTRO DE EGRESOS -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Tabla de Formas de Pago -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="font-black text-sm text-cafe-madera uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="credit-card" class="w-4 h-4 text-blue-600"></i> Resumen por Método de Pago
+                    </h3>
+                </div>
+                <div class="p-4 overflow-x-auto flex-1">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b-2 border-gray-200 text-gray-500 text-xs uppercase">
+                                <th class="py-2.5 px-2">Método</th>
+                                <th class="py-2.5 px-2 text-center">Operaciones</th>
+                                <th class="py-2.5 px-2 text-right">Ventas</th>
+                                <th class="py-2.5 px-2 text-right">Propinas</th>
+                                <th class="py-2.5 px-2 text-right">Total Cobrado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-formas-pago" class="divide-y divide-gray-100 font-semibold"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Módulo de Egresos (Gastos de Caja) -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                <div class="p-4 bg-red-50/60 border-b border-red-100 flex justify-between items-center">
+                    <h3 class="font-black text-sm text-red-900 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="minus-circle" class="w-4 h-4 text-red-600"></i> Registro de Egresos / Gastos de Caja
+                    </h3>
+                </div>
+                <div class="p-4 border-b border-gray-100 bg-gray-50/50">
+                    <form id="form-egreso" onsubmit="registrarNuevoEgreso(event)" class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="egreso-concepto" required placeholder="Concepto (ej. Hielo, Insumos, Proveedor...)" class="flex-1 px-3 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold focus:outline-none focus:border-red-500">
+                        <div class="relative sm:w-36">
+                            <span class="absolute left-3 top-2.5 font-black text-gray-400 text-sm">$</span>
+                            <input type="number" id="egreso-monto" step="0.01" min="0.01" required placeholder="0.00" class="w-full pl-7 pr-3 py-2.5 rounded-xl border border-gray-300 text-sm font-black focus:outline-none focus:border-red-500">
+                        </div>
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition shadow-sm shrink-0 flex items-center justify-center gap-1.5">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Registrar
+                        </button>
+                    </form>
+                </div>
+                <div class="p-4 overflow-y-auto custom-scrollbar max-h-60 flex-1">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b-2 border-gray-200 text-gray-500 text-xs uppercase">
+                                <th class="py-2 px-2">Hora</th>
+                                <th class="py-2 px-2">Concepto</th>
+                                <th class="py-2 px-2">Registró</th>
+                                <th class="py-2 px-2 text-right">Monto</th>
+                                <th class="py-2 px-2 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-egresos" class="divide-y divide-gray-100 font-semibold"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 6: TABLA DE PROPINAS Y RENDIMIENTO POR MESERO -->
+        <section class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 bg-amber-50/60 border-b border-amber-100 flex justify-between items-center">
+                <h3 class="font-black text-sm text-amber-900 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="award" class="w-4 h-4 text-amber-600"></i> Desglose de Propinas y Ventas por Mesero / Cajero
+                </h3>
+            </div>
+            <div class="p-4 overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200 text-gray-500 text-xs uppercase">
+                            <th class="py-2.5 px-3">Personal / Mesero</th>
+                            <th class="py-2.5 px-3 text-center">Cuentas Atendidas</th>
+                            <th class="py-2.5 px-3 text-right">Ventas Generadas</th>
+                            <th class="py-2.5 px-3 text-right">Propinas Recaudadas</th>
+                            <th class="py-2.5 px-3 text-right">Total Procesado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-propinas-mesero" class="divide-y divide-gray-100 font-semibold"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 7: TABLA DETALLADA DE CUENTAS COBRADAS (HISTORIAL DE CAJA) -->
+        <section class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="p-4 bg-emerald-50/60 border-b border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h3 class="font-black text-sm text-emerald-900 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="receipt" class="w-4 h-4 text-emerald-600"></i> Historial Detallado de Cuentas Cobradas (Ingresos)
+                </h3>
+                <span class="text-xs font-bold text-emerald-700" id="contador-historial-ventas">0 registros</span>
+            </div>
+            <div class="p-4 overflow-x-auto max-h-96 custom-scrollbar">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200 text-gray-500 text-xs uppercase">
+                            <th class="py-2.5 px-3"># Registro</th>
+                            <th class="py-2.5 px-3">Mesa / Origen</th>
+                            <th class="py-2.5 px-3">Atendió</th>
+                            <th class="py-2.5 px-3">Fecha y Hora</th>
+                            <th class="py-2.5 px-3">Método de Pago</th>
+                            <th class="py-2.5 px-3 text-right">Subtotal Venta</th>
+                            <th class="py-2.5 px-3 text-right">Propina</th>
+                            <th class="py-2.5 px-3 text-right">Total Pagado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cuentas-cobradas" class="divide-y divide-gray-100 font-semibold"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+   <!-- PLANTILLA OCULTA PARA GENERACIÓN DE REPORTE PDF EJECUTIVO -->
+    <div style="display: none;">
+        <div id="reporte-pdf-template" style="box-sizing: border-box; padding: 10px; background: #ffffff; color: #000000; font-family: Arial, sans-serif; font-size: 11px; width: 700px; margin: 0; text-align: left;">
+            <div style="border-bottom: 2px solid #000000; padding-bottom: 12px; margin-bottom: 15px; display: flex; justify-content: space-between;">
+                <div>
+                    <h1 style="font-size: 20px; font-weight: 900; text-transform: uppercase; margin: 0;">Reporte de Corte de Caja</h1>
+                    <p style="font-size: 11px; color: #555555; font-weight: bold; margin: 4px 0 0 0;">Sistema Integral POS Restaurante</p>
+                </div>
+                <div style="text-align: right; font-size: 10px;">
+                    <p style="margin: 0;"><strong>Emisión:</strong> <span id="pdf-fecha-hora"></span></p>
+                    <p style="margin: 3px 0 0 0;"><strong>Responsable:</strong> <span id="pdf-responsable"></span></p>
+                </div>
+            </div>
+
+            <!-- Resumen Ejecutivo PDF -->
+            <h2 style="font-size: 12px; font-weight: 900; text-transform: uppercase; background: #f3f4f6; padding: 6px; border: 1px solid #d1d5db; margin: 0 0 8px 0;">1. Resumen Financiero General</h2>
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; margin-bottom: 15px; font-size: 10px;">
+                <thead>
+                    <tr style="background: #f9fafb; page-break-inside: avoid;">
+                        <th style="border: 1px solid #d1d5db; padding: 6px; text-align: left;">Ingresos Ventas</th>
+                        <th style="border: 1px solid #d1d5db; padding: 6px; text-align: left;">Egresos / Gastos</th>
+                        <th style="border: 1px solid #d1d5db; padding: 6px; text-align: left;">Propinas</th>
+                        <th style="border: 1px solid #d1d5db; padding: 6px; text-align: left;">Efectivo Caja</th>
+                        <th style="border: 1px solid #d1d5db; padding: 6px; text-align: left;">Balance Neto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="font-weight: bold; font-size: 12px;">
+                        <td style="border: 1px solid #d1d5db; padding: 6px; color: #047857;" id="pdf-kpi-ingresos">$0.00</td>
+                        <td style="border: 1px solid #d1d5db; padding: 6px; color: #dc2626;" id="pdf-kpi-egresos">$0.00</td>
+                        <td style="border: 1px solid #d1d5db; padding: 6px; color: #d97706;" id="pdf-kpi-propinas">$0.00</td>
+                        <td style="border: 1px solid #d1d5db; padding: 6px; color: #1d4ed8;" id="pdf-kpi-efectivo">$0.00</td>
+                        <td style="border: 1px solid #d1d5db; padding: 6px; color: #000000;" id="pdf-kpi-balance">$0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Desglose por Forma de Pago PDF -->
+            <h2 style="font-size: 12px; font-weight: 900; text-transform: uppercase; background: #f3f4f6; padding: 6px; border: 1px solid #d1d5db; margin: 0 0 8px 0;">2. Desglose por Formas de Pago</h2>
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; margin-bottom: 15px; font-size: 10px;">
+                <thead>
+                    <tr style="background: #f9fafb; page-break-inside: avoid;">
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left;">Método de Pago</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: center;">Operaciones</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: right;">Ventas</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: right;">Propinas</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: right;">Total Cobrado</th>
+                    </tr>
+                </thead>
+                <tbody id="pdf-tabla-metodos"></tbody>
+            </table>
+
+            <!-- Desglose de Propinas por Personal PDF -->
+            <h2 style="font-size: 12px; font-weight: 900; text-transform: uppercase; background: #f3f4f6; padding: 6px; border: 1px solid #d1d5db; margin: 0 0 8px 0;">3. Rendimiento y Propinas por Personal</h2>
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; margin-bottom: 15px; font-size: 10px;">
+                <thead>
+                    <tr style="background: #f9fafb; page-break-inside: avoid;">
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left;">Personal / Cajero</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: center;">Cuentas</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: right;">Ventas</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: right;">Propinas</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="pdf-tabla-personal"></tbody>
+            </table>
+
+            <!-- Detalle de Cuentas Cobradas PDF -->
+            <h2 style="font-size: 12px; font-weight: 900; text-transform: uppercase; background: #f3f4f6; padding: 6px; border: 1px solid #d1d5db; margin: 0 0 8px 0;">4. Detalle de Cuentas Cobradas (Ingresos)</h2>
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; margin-bottom: 15px; font-size: 9px;">
+                <thead>
+                    <tr style="background: #f9fafb; page-break-inside: avoid;">
+                        <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left;">#</th>
+                        <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left;">Mesa / Origen</th>
+                        <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left;">Atendió</th>
+                        <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left;">Fecha / Hora</th>
+                        <th style="border: 1px solid #d1d5db; padding: 4px; text-align: left;">Método</th>
+                        <th style="border: 1px solid #d1d5db; padding: 4px; text-align: right;">Venta</th>
+                        <th style="border: 1px solid #d1d5db; padding: 4px; text-align: right;">Propina</th>
+                        <th style="border: 1px solid #d1d5db; padding: 4px; text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="pdf-tabla-ventas"></tbody>
+            </table>
+
+            <!-- Detalle de Egresos PDF -->
+            <h2 style="font-size: 12px; font-weight: 900; text-transform: uppercase; background: #f3f4f6; padding: 6px; border: 1px solid #d1d5db; margin: 0 0 8px 0;">5. Detalle de Egresos / Gastos Registrados</h2>
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; margin-bottom: 20px; font-size: 10px;">
+                <thead>
+                    <tr style="background: #f9fafb; page-break-inside: avoid;">
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left;">Fecha / Hora</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left;">Concepto</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: left;">Responsable</th>
+                        <th style="border: 1px solid #d1d5db; padding: 5px; text-align: right;">Monto</th>
+                    </tr>
+                </thead>
+                <tbody id="pdf-tabla-egresos"></tbody>
+            </table>
+
+            <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #9ca3af; display: flex; justify-content: space-around; text-align: center; font-size: 10px;">
+                <div>
+                    <p style="border-top: 1px solid #000; padding-top: 4px; width: 180px; margin: 0 auto; font-weight: bold;">Firma Cajero / Turno</p>
+                </div>
+                <div>
+                    <p style="border-top: 1px solid #000; padding-top: 4px; width: 180px; margin: 0 auto; font-weight: bold;">Firma Administrador / Auditoría</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================= 1. SESIÓN Y SEGURIDAD =================
+        function initSession() {
+            let n = sessionStorage.getItem('usuarioNombre');
+            let r = sessionStorage.getItem('usuarioRol');
+            if (!n) {
+                n = localStorage.getItem('usuarioNombre');
+                r = localStorage.getItem('usuarioRol');
+                if (n) {
+                    sessionStorage.setItem('usuarioNombre', n);
+                    sessionStorage.setItem('usuarioRol', r);
+                }
+            }
+            return { nombre: n, rol: r };
+        }
+
+        const sessionInfo = initSession();
+        const nombre = sessionInfo.nombre;
+        const rol = sessionInfo.rol;
+
+        if (!nombre || rol !== 'administrador') {
+            window.location.href = "login.html";
+        } else {
+            document.getElementById('body-admin').classList.remove('hidden');
+            document.getElementById('body-admin').classList.add('flex');
+            document.getElementById('nombre-usuario-header').textContent = nombre;
+            document.getElementById('fecha-actual-corte').textContent = `Fecha operativa: ${new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+            lucide.createIcons();
+        }
+
+        function cerrarSesion() {
+            sessionStorage.clear();
+            localStorage.clear();
+            window.location.replace('login.html?t=' + new Date().getTime());
+        }
+
+        // Bloquear signos negativos en el input de monto de egresos
+        document.getElementById('egreso-monto').addEventListener('keydown', function(e) {
+            if (e.key === '-' || e.key === 'e') e.preventDefault();
+        });
+
+        // ================= 2. VARIABLES Y CONEXIÓN API =================
+        const hostBackend = window.location.hostname || "127.0.0.1";
+        const API_URL = `http://${hostBackend}:8000/api`;
+        const WS_URL = `ws://${hostBackend}:8000/ws/comandas`;
+
+        let socket;
+        let datosVentas = [];
+        let datosEgresos = [];
+        let cuentasPendientes = [];
+        let mesasEstado = [];
+
+        // Instancias de Chart.js
+        let chartFormasPagoInstance = null;
+        let chartFlujoInstance = null;
+        let chartPersonalInstance = null;
+
+        function formatoMesa(idMesa) {
+            if (!idMesa) return 'General';
+            if (String(idMesa).toUpperCase() === 'DELIVERY') return 'Delivery Local';
+            if (String(idMesa).startsWith('T')) return `Mesa ${idMesa.replace('T', '')} (Terraza)`;
+            if (String(idMesa).startsWith('P')) return `Mesa ${idMesa.replace('P', '')} (Patio)`;
+            if (String(idMesa).startsWith('S')) return `Sala ${idMesa.replace('S', '')}`;
+            return `Mesa ${idMesa}`;
+        }
+
+        // ================= 3. WEBSOCKETS EN TIEMPO REAL =================
+        function iniciarWebSocket() {
+            socket = new WebSocket(WS_URL);
+            socket.onopen = () => {
+                document.getElementById('conexion-estado').textContent = "🟢 Sincronizado en vivo";
+            };
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if ([
+                    "MESA_PAGADA", "PROPINAS_ACTUALIZADAS", "CAJA_ACTUALIZADA",
+                    "CORTE_CAJA_REALIZADO", "NUEVA_COMANDA_COCINA", "NUEVA_COMANDA_BARRA", "MESA_LIBERADA"
+                ].includes(data.tipo)) {
+                    recargarTodo();
+                }
+            };
+            socket.onclose = () => {
+                document.getElementById('conexion-estado').textContent = "🟠 Reconectando...";
+                setTimeout(iniciarWebSocket, 3000);
+            };
+        }
+
+        // ================= 4. CARGA Y PROCESAMIENTO DE DATOS =================
+        async function recargarTodo() {
+            try {
+                const t = new Date().getTime();
+                const [resHistorial, resEgresos, resPendientes, resMesas] = await Promise.all([
+                    fetch(`${API_URL}/caja/historial?t=${t}`),
+                    fetch(`${API_URL}/caja/egresos?t=${t}`),
+                    fetch(`${API_URL}/caja/pendientes?t=${t}`),
+                    fetch(`${API_URL}/mesas?t=${t}`)
+                ]);
+
+                datosVentas = resHistorial.ok ? await resHistorial.json() : [];
+                datosEgresos = resEgresos.ok ? await resEgresos.json() : [];
+                cuentasPendientes = resPendientes.ok ? await resPendientes.json() : [];
+                mesasEstado = resMesas.ok ? await resMesas.json() : [];
+
+                actualizarBadgesOperativos();
+                procesarYRenderizarDashboard();
+            } catch (e) {
+                console.error("Error cargando datos en panel admin:", e);
+            }
+        }
+
+        function actualizarBadgesOperativos() {
+            const ocupadas = mesasEstado.filter(m => m.estado === 'ocupada' || m.estado === 'limpieza').length;
+            document.getElementById('badge-mesas-activas').textContent = `${ocupadas} Mesas Activas`;
+            document.getElementById('badge-cuentas-pendientes').textContent = `${cuentasPendientes.length} Cuentas por Cobrar`;
+        }
+
+        function calcularMetricas() {
+            let totalIngresos = 0;
+            let totalPropinas = 0;
+            let totalEgresos = 0;
+
+            const metodos = {
+                'Efectivo': { ops: 0, ventas: 0, propinas: 0, total: 0 },
+                'Tarjeta': { ops: 0, ventas: 0, propinas: 0, total: 0 },
+                'Transferencia': { ops: 0, ventas: 0, propinas: 0, total: 0 }
+            };
+
+            const porMesero = {};
+
+            datosVentas.forEach(v => {
+                const venta = parseFloat(v.total) || 0;
+                const prop = parseFloat(v.propina) || 0;
+                const metodo = metodos[v.metodo_pago] ? v.metodo_pago : 'Efectivo';
+                const meseroNombre = v.mesero || 'Sin asignar';
+
+                totalIngresos += venta;
+                totalPropinas += prop;
+
+                metodos[metodo].ops += 1;
+                metodos[metodo].ventas += venta;
+                metodos[metodo].propinas += prop;
+                metodos[metodo].total += (venta + prop);
+
+                if (!porMesero[meseroNombre]) {
+                    porMesero[meseroNombre] = { cuentas: 0, ventas: 0, propinas: 0, total: 0 };
+                }
+                porMesero[meseroNombre].cuentas += 1;
+                porMesero[meseroNombre].ventas += venta;
+                porMesero[meseroNombre].propinas += prop;
+                porMesero[meseroNombre].total += (venta + prop);
+            });
+
+            datosEgresos.forEach(e => {
+                totalEgresos += parseFloat(e.monto) || 0;
+            });
+
+            const efectivoEnCaja = metodos['Efectivo'].ventas - totalEgresos;
+            const balanceNeto = totalIngresos - totalEgresos;
+
+            return {
+                totalIngresos,
+                totalPropinas,
+                totalEgresos,
+                efectivoEnCaja,
+                balanceNeto,
+                metodos,
+                porMesero
+            };
+        }
+
+        function procesarYRenderizarDashboard() {
+            const m = calcularMetricas();
+
+            // 1. Actualizar KPIs
+            document.getElementById('kpi-ingresos').textContent = `$${m.totalIngresos.toFixed(2)}`;
+            document.getElementById('kpi-num-cuentas').textContent = `${datosVentas.length} cuentas cobradas`;
+
+            document.getElementById('kpi-egresos').textContent = `$${m.totalEgresos.toFixed(2)}`;
+            document.getElementById('kpi-num-egresos').textContent = `${datosEgresos.length} gastos registrados`;
+
+            document.getElementById('kpi-propinas').textContent = `$${m.totalPropinas.toFixed(2)}`;
+            document.getElementById('kpi-efectivo-caja').textContent = `$${m.efectivoEnCaja.toFixed(2)}`;
+            document.getElementById('kpi-balance-neto').textContent = `$${m.balanceNeto.toFixed(2)}`;
+
+            // 2. Renderizar Tabla de Formas de Pago
+            const tbodyMetodos = document.getElementById('tabla-formas-pago');
+            tbodyMetodos.innerHTML = Object.keys(m.metodos).map(k => {
+                const d = m.metodos[k];
+                const badge = k === 'Efectivo'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : (k === 'Tarjeta' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800');
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="py-3 px-2"><span class="px-2.5 py-1 rounded-md text-xs font-black uppercase ${badge}">${k}</span></td>
+                        <td class="py-3 px-2 text-center font-bold text-gray-700">${d.ops}</td>
+                        <td class="py-3 px-2 text-right text-gray-800">$${d.ventas.toFixed(2)}</td>
+                        <td class="py-3 px-2 text-right text-amber-600">$${d.propinas.toFixed(2)}</td>
+                        <td class="py-3 px-2 text-right font-black text-negro-carbon">$${d.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // 3. Renderizar Tabla de Egresos
+            const tbodyEgresos = document.getElementById('tabla-egresos');
+            if (datosEgresos.length === 0) {
+                tbodyEgresos.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-gray-400 font-bold">No hay egresos registrados en este turno.</td></tr>`;
+            } else {
+                tbodyEgresos.innerHTML = datosEgresos.map(e => `
+                    <tr class="hover:bg-red-50/30">
+                        <td class="py-2.5 px-2 text-xs text-gray-500">${e.hora}</td>
+                        <td class="py-2.5 px-2 font-bold text-gray-800">${e.concepto}</td>
+                        <td class="py-2.5 px-2 text-xs text-gray-500">${e.responsable}</td>
+                        <td class="py-2.5 px-2 text-right font-black text-red-600">-$${parseFloat(e.monto).toFixed(2)}</td>
+                        <td class="py-2.5 px-2 text-center">
+                            <button onclick="eliminarEgreso(${e.id})" class="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition" title="Eliminar egreso">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // 4. Renderizar Tabla de Propinas y Ventas por Personal
+            const tbodyPersonal = document.getElementById('tabla-propinas-mesero');
+            const nombresPersonal = Object.keys(m.porMesero);
+            if (nombresPersonal.length === 0) {
+                tbodyPersonal.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-gray-400 font-bold">Sin ventas cobradas todavía.</td></tr>`;
+            } else {
+                tbodyPersonal.innerHTML = nombresPersonal.map(nom => {
+                    const p = m.porMesero[nom];
+                    return `
+                        <tr class="hover:bg-amber-50/30">
+                            <td class="py-3 px-3 font-black text-cafe-madera">${nom}</td>
+                            <td class="py-3 px-3 text-center">${p.cuentas}</td>
+                            <td class="py-3 px-3 text-right text-gray-800">$${p.ventas.toFixed(2)}</td>
+                            <td class="py-3 px-3 text-right font-black text-emerald-600">+$${p.propinas.toFixed(2)}</td>
+                            <td class="py-3 px-3 text-right font-black text-negro-carbon">$${p.total.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // 5. Renderizar Tabla Detallada de Cuentas Cobradas
+            document.getElementById('contador-historial-ventas').textContent = `${datosVentas.length} cuentas cobradas`;
+            const tbodyVentas = document.getElementById('tabla-cuentas-cobradas');
+            if (datosVentas.length === 0) {
+                tbodyVentas.innerHTML = `<tr><td colspan="8" class="py-10 text-center text-gray-400 font-bold">No se han registrado cobros en este turno.</td></tr>`;
+            } else {
+                tbodyVentas.innerHTML = datosVentas.map(v => {
+                    const totalPagado = (parseFloat(v.total) || 0) + (parseFloat(v.propina) || 0);
+                    return `
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-3 px-3 font-mono text-xs text-gray-500">#${v.id}</td>
+                            <td class="py-3 px-3 font-black text-cafe-madera">${formatoMesa(v.mesa)}</td>
+                            <td class="py-3 px-3 text-gray-700">${v.mesero}</td>
+                            <td class="py-3 px-3 text-xs text-gray-500">${v.fecha} ${v.hora_pago}</td>
+                            <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200">${v.metodo_pago}</span></td>
+                            <td class="py-3 px-3 text-right text-gray-800">$${parseFloat(v.total).toFixed(2)}</td>
+                            <td class="py-3 px-3 text-right text-amber-600">+$${parseFloat(v.propina).toFixed(2)}</td>
+                            <td class="py-3 px-3 text-right font-black text-emerald-700">$${totalPagado.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // 6. Actualizar Gráficos
+            renderizarGraficos(m);
+            lucide.createIcons();
+        }
+
+        // ================= 5. GRÁFICOS CON CHART.JS =================
+        function renderizarGraficos(m) {
+            // Gráfico 1: Formas de Pago
+            const ctxPago = document.getElementById('chartFormasPago').getContext('2d');
+            const dataPagos = [
+                m.metodos['Efectivo'].ventas,
+                m.metodos['Tarjeta'].ventas,
+                m.metodos['Transferencia'].ventas
+            ];
+            if (chartFormasPagoInstance) chartFormasPagoInstance.destroy();
+            chartFormasPagoInstance = new Chart(ctxPago, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Efectivo', 'Tarjeta', 'Transferencia'],
+                    datasets: [{
+                        data: dataPagos.some(v => v > 0) ? dataPagos : [1, 0, 0],
+                        backgroundColor: dataPagos.some(v => v > 0)
+                            ? ['#10B981', '#3B82F6', '#8B5CF6']
+                            : ['#E5E7EB', '#E5E7EB', '#E5E7EB'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { weight: 'bold', size: 11 } } }
+                    }
+                }
+            });
+
+            // Gráfico 2: Flujo Financiero
+            const ctxFlujo = document.getElementById('chartFlujoFinanciero').getContext('2d');
+            if (chartFlujoInstance) chartFlujoInstance.destroy();
+            chartFlujoInstance = new Chart(ctxFlujo, {
+                type: 'bar',
+                data: {
+                    labels: ['Ventas', 'Propinas', 'Egresos', 'Neto'],
+                    datasets: [{
+                        label: 'Monto ($ MXN)',
+                        data: [m.totalIngresos, m.totalPropinas, m.totalEgresos, m.balanceNeto],
+                        backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#4A5D23'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Gráfico 3: Desempeño Personal
+            const ctxPersonal = document.getElementById('chartPersonal').getContext('2d');
+            const nombres = Object.keys(m.porMesero);
+            const ventasMesero = nombres.map(n => m.porMesero[n].ventas);
+            const propinasMesero = nombres.map(n => m.porMesero[n].propinas);
+
+            if (chartPersonalInstance) chartPersonalInstance.destroy();
+            chartPersonalInstance = new Chart(ctxPersonal, {
+                type: 'bar',
+                data: {
+                    labels: nombres.length > 0 ? nombres : ['Sin registros'],
+                    datasets: [
+                        {
+                            label: 'Ventas ($)',
+                            data: nombres.length > 0 ? ventasMesero : [0],
+                            backgroundColor: '#5C4033',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Propinas ($)',
+                            data: nombres.length > 0 ? propinasMesero : [0],
+                            backgroundColor: '#10B981',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { weight: 'bold', size: 11 } } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // ================= 6. GESTIÓN DE EGRESOS =================
+        async function registrarNuevoEgreso(event) {
+            event.preventDefault();
+            const inputConcepto = document.getElementById('egreso-concepto');
+            const inputMonto = document.getElementById('egreso-monto');
+
+            const concepto = inputConcepto.value.trim();
+            const monto = parseFloat(inputMonto.value);
+
+            if (!concepto || isNaN(monto) || monto <= 0) {
+                alert("Ingresa un concepto válido y un monto mayor a $0.00.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/caja/egresos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        concepto: concepto,
+                        monto: monto,
+                        responsable: nombre
+                    })
+                });
+                if (res.ok) {
+                    inputConcepto.value = '';
+                    inputMonto.value = '';
+                    await recargarTodo();
+                }
+            } catch (e) {
+                alert("Error al registrar el egreso.");
+            }
+        }
+
+        async function eliminarEgreso(id) {
+            if (!confirm("¿Eliminar este registro de egreso?")) return;
+            try {
+                const res = await fetch(`${API_URL}/caja/egresos/${id}`, { method: 'DELETE' });
+                if (res.ok) await recargarTodo();
+            } catch (e) {
+                alert("Error al eliminar el egreso.");
+            }
+        }
+
+        // ================= 7. EXPORTACIÓN DE REPORTES (PDF Y XML) =================
+        function poblarPlantillaPDF() {
+            const m = calcularMetricas();
+            const ahora = new Date();
+            document.getElementById('pdf-fecha-hora').textContent = ahora.toLocaleString('es-MX');
+            document.getElementById('pdf-responsable').textContent = nombre;
+
+            document.getElementById('pdf-kpi-ingresos').textContent = `$${m.totalIngresos.toFixed(2)}`;
+            document.getElementById('pdf-kpi-egresos').textContent = `$${m.totalEgresos.toFixed(2)}`;
+            document.getElementById('pdf-kpi-propinas').textContent = `$${m.totalPropinas.toFixed(2)}`;
+            document.getElementById('pdf-kpi-efectivo').textContent = `$${m.efectivoEnCaja.toFixed(2)}`;
+            document.getElementById('pdf-kpi-balance').textContent = `$${m.balanceNeto.toFixed(2)}`;
+
+            document.getElementById('pdf-tabla-metodos').innerHTML = Object.keys(m.metodos).map(k => {
+                const d = m.metodos[k];
+                return `
+                    <tr>
+                        <td style="border:1px solid #d1d5db;padding:5px;font-weight:bold;">${k}</td>
+                        <td style="border:1px solid #d1d5db;padding:5px;text-align:center;">${d.ops}</td>
+                        <td style="border:1px solid #d1d5db;padding:5px;text-align:right;">$${d.ventas.toFixed(2)}</td>
+                        <td style="border:1px solid #d1d5db;padding:5px;text-align:right;">$${d.propinas.toFixed(2)}</td>
+                        <td style="border:1px solid #d1d5db;padding:5px;text-align:right;font-weight:bold;">$${d.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const nombresPersonal = Object.keys(m.porMesero);
+            document.getElementById('pdf-tabla-personal').innerHTML = nombresPersonal.length === 0
+                ? `<tr><td colspan="5" style="border:1px solid #d1d5db;padding:8px;text-align:center;">Sin registros</td></tr>`
+                : nombresPersonal.map(nom => {
+                    const p = m.porMesero[nom];
+                    return `
+                        <tr>
+                            <td style="border:1px solid #d1d5db;padding:5px;font-weight:bold;">${nom}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;text-align:center;">${p.cuentas}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;text-align:right;">$${p.ventas.toFixed(2)}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;text-align:right;">$${p.propinas.toFixed(2)}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;text-align:right;font-weight:bold;">$${p.total.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            document.getElementById('pdf-tabla-ventas').innerHTML = datosVentas.length === 0
+                ? `<tr><td colspan="8" style="border:1px solid #d1d5db;padding:8px;text-align:center;">Sin cuentas cobradas</td></tr>`
+                : datosVentas.map(v => {
+                    const tot = (parseFloat(v.total) || 0) + (parseFloat(v.propina) || 0);
+                    return `
+                        <tr>
+                            <td style="border:1px solid #d1d5db;padding:5px;">#${v.id}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;">${formatoMesa(v.mesa)}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;">${v.mesero}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;">${v.fecha} ${v.hora_pago}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;">${v.metodo_pago}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;text-align:right;">$${parseFloat(v.total).toFixed(2)}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;text-align:right;">$${parseFloat(v.propina).toFixed(2)}</td>
+                            <td style="border:1px solid #d1d5db;padding:5px;text-align:right;font-weight:bold;">$${tot.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            document.getElementById('pdf-tabla-egresos').innerHTML = datosEgresos.length === 0
+                ? `<tr><td colspan="4" style="border:1px solid #d1d5db;padding:8px;text-align:center;">Sin egresos registrados</td></tr>`
+                : datosEgresos.map(e => `
+                    <tr>
+                        <td style="border:1px solid #d1d5db;padding:5px;">${e.fecha} ${e.hora}</td>
+                        <td style="border:1px solid #d1d5db;padding:5px;font-weight:bold;">${e.concepto}</td>
+                        <td style="border:1px solid #d1d5db;padding:5px;">${e.responsable}</td>
+                        <td style="border:1px solid #d1d5db;padding:5px;text-align:right;font-weight:bold;">-$${parseFloat(e.monto).toFixed(2)}</td>
+                    </tr>
+                `).join('');
+        }
+
+        async function descargarReportePDF() {
+            poblarPlantillaPDF();
+            const elemento = document.getElementById('reporte-pdf-template');
+            const fechaStr = new Date().toISOString().slice(0, 10);
+            const nombreArchivo = `Reporte_Corte_Caja_${fechaStr}.pdf`;
+
+            const opciones = {
+                margin: [8, 8, 8, 8],
+                filename: nombreArchivo,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: 720, scrollX: 0, scrollY: 0, x: 0, y: 0 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', 'h2'] }
+            };
+
+            try {
+                await html2pdf().set(opciones).from(elemento).save();
+            } catch (e) {
+                console.error("Error al generar PDF:", e);
+                alert("Hubo un problema al generar el PDF.");
+            }
+        }
+
+        function escaparXML(texto) {
+            return String(texto ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        // Aplica diseño a una hoja: anchos, encabezado, bordes, formato de moneda
+        function aplicarEstiloHoja(ws, { anchos, filaEnc = 0, colsMoneda = [], colsCentro = [], filtro = true }) {
+            const rango = XLSX.utils.decode_range(ws['!ref']);
+            const lado = { style: 'thin', color: { rgb: 'D1D5DB' } };
+            const bordes = { top: lado, bottom: lado, left: lado, right: lado };
+            ws['!cols'] = anchos.map(w => ({ wch: w }));
+
+            for (let R = filaEnc; R <= rango.e.r; R++) {
+                for (let C = rango.s.c; C <= rango.e.c; C++) {
+                    const ref = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+                    const celda = ws[ref];
+                    if (R === filaEnc) {
+                        celda.s = {
+                            font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+                            fill: { patternType: 'solid', fgColor: { rgb: '1F2937' } },
+                            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+                            border: bordes
+                        };
+                    } else {
+                        celda.s = {
+                            font: { sz: 11 },
+                            ...(R % 2 === 0 ? { fill: { patternType: 'solid', fgColor: { rgb: 'F9FAFB' } } } : {}),
+                            alignment: { horizontal: colsMoneda.includes(C) ? 'right' : (colsCentro.includes(C) ? 'center' : 'left'), vertical: 'center' },
+                            border: bordes
+                        };
+                        if (colsMoneda.includes(C) && typeof celda.v === 'number') celda.z = '"$"#,##0.00';
+                    }
+                }
+            }
+            ws['!rows'] = [{ hpx: 26 }];
+            if (filtro && rango.e.r > filaEnc) {
+                ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: filaEnc, c: rango.s.c }, e: { r: rango.e.r, c: rango.e.c } }) };
+            }
+        }
+
+        function descargarReporteExcel() {
+            const m = calcularMetricas();
+            const wb = XLSX.utils.book_new();
+
+            // Pestaña 1: Resumen General
+            const resumenData = [
+                ["REPORTE GENERAL DE CORTE DE CAJA"],
+                ["Fecha de Emisión:", new Date().toLocaleString('es-MX')],
+                ["Responsable:", nombre],
+                [],
+                ["Concepto Financiero", "Monto ($ MXN)"],
+                ["Ingresos Brutos (Ventas)", m.totalIngresos],
+                ["Egresos / Gastos", m.totalEgresos],
+                ["Propinas Recaudadas", m.totalPropinas],
+                ["Efectivo Neto en Caja", m.efectivoEnCaja],
+                ["Balance Neto del Turno", m.balanceNeto],
+                [],
+                ["Total Operaciones Cobradas", datosVentas.length]
+            ];
+            const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+            aplicarEstiloHoja(wsResumen, { anchos: [34, 22], filaEnc: 4, colsMoneda: [1], filtro: false });
+            wsResumen['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+            wsResumen['A1'].s = {
+                font: { bold: true, sz: 16, color: { rgb: 'FFFFFF' } },
+                fill: { patternType: 'solid', fgColor: { rgb: '1F2937' } },
+                alignment: { horizontal: 'center', vertical: 'center' }
+            };
+            wsResumen['B1'] = { t: 's', v: '', s: wsResumen['A1'].s };
+            wsResumen['!rows'] = [{ hpx: 34 }, , , , { hpx: 26 }];
+            ['A2', 'A3'].forEach(r => { wsResumen[r].s = { font: { bold: true } }; });
+            ['B2', 'B3'].forEach(r => { wsResumen[r].s = { alignment: { horizontal: 'left' } }; });
+            // Fila de balance resaltada y total de operaciones
+            ['A10', 'B10'].forEach(r => {
+                wsResumen[r].s = { ...wsResumen[r].s, font: { bold: true, sz: 12 }, fill: { patternType: 'solid', fgColor: { rgb: 'FEF3C7' } } };
+            });
+            wsResumen['A12'].s = { font: { bold: true } };
+            wsResumen['B12'].s = { font: { bold: true }, alignment: { horizontal: 'right' } };
+            XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen General");
+
+            // Pestaña 2: Formas de Pago
+            const pagosData = [
+                ["Método de Pago", "Operaciones", "Ventas ($)", "Propinas ($)", "Total Cobrado ($)"]
+            ];
+            Object.keys(m.metodos).forEach(k => {
+                const d = m.metodos[k];
+                pagosData.push([k, d.ops, d.ventas, d.propinas, d.total]);
+            });
+            const wsPagos = XLSX.utils.aoa_to_sheet(pagosData);
+            aplicarEstiloHoja(wsPagos, { anchos: [22, 14, 16, 16, 20], colsMoneda: [2, 3, 4], colsCentro: [1] });
+            XLSX.utils.book_append_sheet(wb, wsPagos, "Formas de Pago");
+
+            // Pestaña 3: Rendimiento Personal
+            const personalData = [
+                ["Personal / Mesero", "Cuentas Atendidas", "Ventas Generadas ($)", "Propinas Recaudadas ($)", "Total Procesado ($)"]
+            ];
+            Object.keys(m.porMesero).forEach(nom => {
+                const p = m.porMesero[nom];
+                personalData.push([nom, p.cuentas, p.ventas, p.propinas, p.total]);
+            });
+            const wsPersonal = XLSX.utils.aoa_to_sheet(personalData);
+            aplicarEstiloHoja(wsPersonal, { anchos: [28, 18, 22, 24, 22], colsMoneda: [2, 3, 4], colsCentro: [1] });
+            XLSX.utils.book_append_sheet(wb, wsPersonal, "Rendimiento Personal");
+
+            // Pestaña 4: Detalle de Cuentas Cobradas
+            const ventasData = [
+                ["# Registro", "Mesa / Origen", "Atendió", "Fecha", "Hora", "Método de Pago", "Subtotal Venta ($)", "Propina ($)", "Total Pagado ($)"]
+            ];
+            datosVentas.forEach(v => {
+                const tot = (parseFloat(v.total) || 0) + (parseFloat(v.propina) || 0);
+                ventasData.push([v.id, formatoMesa(v.mesa), v.mesero, v.fecha, v.hora_pago, v.metodo_pago, parseFloat(v.total) || 0, parseFloat(v.propina) || 0, tot]);
+            });
+            const wsVentas = XLSX.utils.aoa_to_sheet(ventasData);
+            aplicarEstiloHoja(wsVentas, { anchos: [12, 24, 22, 14, 12, 18, 20, 14, 18], colsMoneda: [6, 7, 8], colsCentro: [0, 3, 4] });
+            XLSX.utils.book_append_sheet(wb, wsVentas, "Cuentas Cobradas");
+
+            // Pestaña 5: Egresos Registrados
+            const egresosData = [
+                ["ID", "Fecha", "Hora", "Concepto", "Responsable", "Monto ($)"]
+            ];
+            datosEgresos.forEach(e => {
+                egresosData.push([e.id, e.fecha, e.hora, e.concepto, e.responsable, parseFloat(e.monto) || 0]);
+            });
+            const wsEgresos = XLSX.utils.aoa_to_sheet(egresosData);
+            aplicarEstiloHoja(wsEgresos, { anchos: [10, 14, 12, 34, 22, 16], colsMoneda: [5], colsCentro: [0, 1, 2] });
+            XLSX.utils.book_append_sheet(wb, wsEgresos, "Egresos");
+
+            // Descargar archivo Excel (.xlsx)
+            const fechaStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Reporte_Corte_Caja_${fechaStr}.xlsx`);
+        }
+
+        // ================= 8. CORTE DE CAJA DEFINITIVO Y REINICIO DE FOLIOS A 0 =================
+        async function ejecutarCorteDiaCompleto() {
+            if (cuentasPendientes.length > 0) {
+                const continuarConPendientes = confirm(`⚠️ ATENCIÓN: Actualmente hay ${cuentasPendientes.length} cuenta(s) abierta(s) sin cobrar.
+                Si realizas el corte ahora, esas órdenes activas también se eliminarán para reiniciar los folios a 0.
+                ¿Deseas continuar de todos modos?`);
+                if (!continuarConPendientes) return;
+            }
+
+            const confirmacionFinal = confirm(
+                `⚠️ CONFIRMACIÓN DE CORTE DE CAJA DE FIN DE DÍA ⚠️
+                ` +
+                                `Asegúrate de haber descargado tus reportes en PDF y XML antes de continuar.
+                ` +
+                                `Esta acción:
+                ` +
+                                `1. Borrará el historial de ventas, egresos, barra y cocina del día.
+                ` +
+                                `2. Reiniciará el bote de propinas a $0.00.
+                ` +
+                                `3. Liberará todas las mesas.
+                ` +
+                                `4. Reiniciará el contador de Folios desde 0 para el día siguiente.
+
+                ` +
+                                `¿Confirmas ejecutar el Corte de Caja Completo?`
+                            );
+
+            if (!confirmacionFinal) return;
+
+            try {
+                const res = await fetch(`${API_URL}/caja/corte`, { method: 'DELETE' });
+                if (res.ok) {
+                    localStorage.removeItem('historial_cocina');
+                    alert("✅ Corte de Caja realizado con éxito.\n\nTodos los registros del día fueron limpiados y los folios están listos para iniciar desde 0.");
+                    await recargarTodo();
+                } else {
+                    alert("Error al intentar realizar el corte en el servidor.");
+                }
+            } catch (e) {
+                alert("Error de conexión con el servidor al ejecutar el corte.");
+            }
+        }
+
+        // Inicialización
+        if (nombre && rol === 'administrador') {
+            recargarTodo();
+            iniciarWebSocket();
+        }
+    </script>
+</body>
+</html>

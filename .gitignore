@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Base de datos local (se genera al correr el backend)
+*.db
+*.sqlite
+*.sqlite3
+
+# Entorno y sistema
+.env
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

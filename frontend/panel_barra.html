@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Panel de Barra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { colors: { 'verde-militar': '#4A5D23', 'cafe-madera': '#5C4033', 'gris-trinchera': '#808080', 'negro-carbon': '#1A1A1A', 'crema-rustico': '#F5F5DC' } }
+            }
+        }
+    </script>
+    <style>
+        body, html { min-height: 100vh; margin: 0; background-color: #f9f8f6; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .slide-in { animation: slideIn 0.2s ease-out forwards; }
+        
+        /* Animaciones para las Notificaciones */
+        .notif-anim { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { from { transform: scale(0.8) translateY(-20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body class="text-negro-carbon font-sans hidden flex-col h-screen overflow-hidden" id="body-barra">
+
+    <!-- CONTENEDOR DE NOTIFICACIONES EN VIVO -->
+    <div id="contenedor-notificaciones" class="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-3 w-[92%] md:w-[400px] pointer-events-none"></div>
+
+    <header class="bg-negro-carbon text-white h-16 px-4 flex justify-between items-center shadow-lg z-[50] border-b-2 border-verde-militar shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-cafe-madera p-2 rounded-full hidden sm:block"><i data-lucide="wine" class="w-5 h-5"></i></div>
+            <div class="flex flex-col">
+                <h1 class="font-bold text-xl leading-tight tracking-wide">Barra</h1>
+                <div class="flex items-center gap-1">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <p class="text-[10px] text-green-400 font-bold uppercase tracking-wider" id="conexion-estado">En línea</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2 md:gap-3">
+            <div class="flex items-center gap-1.5 bg-cafe-madera/80 px-3 py-1.5 rounded-full border border-white/10 shrink-0">
+                <i data-lucide="user" class="w-3.5 h-3.5"></i>
+                <span class="text-xs font-bold truncate max-w-[60px]" id="nombre-usuario-header">...</span>
+            </div>
+            <!-- Menú Hamburuguesa -->
+            <button onclick="toggleMenuLateral()" class="p-2 bg-gray-700 hover:bg-gray-600 active:scale-95 rounded-full transition relative">
+                <i data-lucide="menu" class="w-5 h-5 text-white"></i>
+            </button>
+        </div>
+    </header>
+
+    <div id="menu-lateral" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden justify-end" onclick="toggleMenuLateral()">
+        <div class="bg-white w-64 h-full shadow-2xl flex flex-col slide-in" onclick="event.stopPropagation()">
+            <div class="p-5 bg-negro-carbon text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Opciones Barra</h3>
+                <button onclick="toggleMenuLateral()"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto">
+                <div class="flex flex-col items-center justify-center p-6 border-b border-gray-200 bg-gray-50 shadow-inner">
+                    <i data-lucide="circle-dollar-sign" class="w-10 h-10 text-emerald-500 mb-2"></i>
+                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Bote Propinas Global</p>
+                    <span class="text-3xl font-black text-emerald-600 mt-1" id="menu-propinas-txt">$0.00</span>
+                </div>
+                <button onclick="window.location.href='panel_caja.html'" class="flex items-center gap-3 p-5 bg-emerald-50 hover:bg-emerald-100 border-b border-gray-200 w-full transition shadow-inner">
+                    <i data-lucide="calculator" class="w-6 h-6 text-emerald-600"></i><span class="font-black text-emerald-800 text-lg">Ir a Caja y Cobro</span>
+                </button>
+                <button onclick="cerrarMenuYAbrir(abrirDeliveryBarra)" class="flex items-center gap-3 p-4 hover:bg-rose-50 border-b border-gray-100 w-full transition">
+                    <i data-lucide="bike" class="w-5 h-5 text-rose-600"></i><span class="font-bold text-gray-800">Delivery Local</span>
+                </button>
+                <button onclick="cerrarMenuYAbrir(abrirHistorialBarra)" class="flex items-center gap-3 p-4 hover:bg-indigo-50 border-b border-gray-100 w-full transition">
+                    <i data-lucide="glass-water" class="w-5 h-5 text-indigo-600"></i><span class="font-bold text-gray-800">Historial Barra</span>
+                </button>
+                <button onclick="cerrarMenuYAbrir(abrirAgotados)" class="flex items-center gap-3 p-4 hover:bg-red-50 border-b border-gray-100 w-full transition">
+                    <i data-lucide="ban" class="w-5 h-5 text-red-500"></i><span class="font-bold text-gray-800">Agotar Bebidas</span>
+                </button>
+            </div>
+
+            <button onclick="cerrarSesion()" class="flex items-center gap-3 p-5 bg-red-50 hover:bg-red-100 w-full transition border-t border-red-100">
+                <i data-lucide="log-out" class="w-5 h-5 text-red-600"></i><span class="font-black text-red-600">Cerrar Sesión</span>
+            </button>
+        </div>
+    </div>
+
+    <main class="flex-1 p-3 md:p-6 overflow-y-auto relative bg-[#f9f8f6] custom-scrollbar">
+        <div id="grid-tickets" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start relative z-10 pb-10"></div>
+    </main>
+
+    <!-- MODAL DELIVERY -->
+    <div id="modal-delivery" class="fixed inset-0 bg-black/95 backdrop-blur-sm z-[80] hidden flex-col md:flex-row w-full h-[100dvh] overflow-hidden">
+        <div id="del-paso-1" class="w-full md:w-1/2 h-full bg-white flex flex-col relative">
+            <div class="p-4 bg-negro-carbon text-white flex justify-between items-center shrink-0">
+                <h2 class="font-black text-xl"><i data-lucide="bike" class="inline w-5 h-5 mr-2 -mt-1"></i>Catálogo Delivery</h2>
+                <button onclick="cerrarDeliveryBarra()" class="md:hidden p-2 bg-white/20 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="flex border-b border-gray-200 bg-gray-50 shrink-0">
+                <button onclick="cambiarMenuDelivery('alimentos')" id="tab-del-alimentos" class="flex-1 py-4 text-center font-black text-base text-verde-militar border-b-4 border-verde-militar bg-white">Alimentos</button>
+                <button onclick="cambiarMenuDelivery('bebidas')" id="tab-del-bebidas" class="flex-1 py-4 text-center font-bold text-base text-gris-trinchera border-b-4 border-transparent">Bebidas</button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[#f9f8f6] pb-28" id="area-catalogo-delivery"></div>
+            
+            <div class="md:hidden absolute bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 shadow-[0_-10px_20px_rgba(0,0,0,0.1)] z-10 pb-8">
+                 <button onclick="irAPaso2Delivery()" class="w-full bg-verde-militar text-white font-black py-4 rounded-xl shadow-lg transition text-lg flex items-center justify-center gap-2">
+                    REVISAR
+                </button>
+            </div>
+        </div>
+
+        <div id="del-paso-2" class="w-full md:w-1/2 h-full bg-gray-100 flex flex-col border-l border-gray-300 relative hidden md:flex">
+            <button onclick="cerrarDeliveryBarra()" class="hidden md:block absolute top-4 right-4 p-2 bg-gray-300 hover:bg-gray-400 rounded-full z-10"><i data-lucide="x" class="w-5 h-5 text-gray-700"></i></button>
+            
+            <div class="p-4 bg-cafe-madera text-white shrink-0 pt-6 md:pt-4 flex items-center gap-3">
+                <button onclick="volverAPaso1Delivery()" class="md:hidden p-2 bg-white/20 hover:bg-white/30 rounded-full shadow-sm transition"><i data-lucide="arrow-left" class="w-5 h-5 text-white"></i></button>
+                <h3 class="font-black text-2xl text-white">Resumen de Orden</h3>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3 pb-32 md:pb-4" id="lista-comanda-delivery">
+                <div class="h-full flex flex-col items-center justify-center text-gray-400"><i data-lucide="shopping-bag" class="w-12 h-12 mb-2 opacity-30"></i><p class="font-bold">Orden Vacía</p></div>
+            </div>
+            
+            <div class="absolute bottom-0 left-0 w-full p-4 bg-white border-t border-gray-200 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.1)] z-10 pb-8 md:pb-4">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="font-bold text-gray-500 uppercase tracking-widest text-sm">Total a Enviar:</span>
+                    <span class="font-black text-3xl text-verde-militar" id="total-delivery-txt">$0.00</span>
+                </div>
+                <button id="btn-enviar-delivery" onclick="enviarOrdenDelivery()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-xl shadow-lg opacity-50 cursor-not-allowed transition text-lg flex items-center justify-center gap-2" disabled>
+                    <i data-lucide="send" class="w-5 h-5"></i> ENVIAR A COCINA / BARRA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL OPCIONES DELIVERY -->
+    <div id="modal-dinamico-delivery" class="fixed inset-0 bg-negro-carbon/90 backdrop-blur-sm z-[90] flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-[400px] shadow-2xl relative flex flex-col max-h-[85vh]">
+            <button onclick="cerrarModalDelivery()" class="absolute top-4 right-4 p-2 text-gray-400 active:scale-90"><i data-lucide="x" class="w-8 h-8"></i></button>
+            <h3 class="text-2xl font-black text-cafe-madera mb-2 pr-8" id="modal-titulo-del">Opciones</h3>
+            <p class="text-base text-gris-trinchera mb-6" id="modal-subtitulo-del">Selecciona preferencia</p>
+            <div id="modal-opciones-del" class="flex flex-col gap-3 mb-2 overflow-y-auto custom-scrollbar pb-4"></div>
+            <div id="modal-acciones-del" class="flex gap-3 hidden pt-4 border-t border-gray-100 mt-2">
+                <button onclick="cerrarModalDelivery()" class="flex-1 py-4 text-gray-600 font-bold bg-gray-100 rounded-xl text-base">Cancelar</button>
+                <button onclick="confirmarOpcionesModalDelivery()" class="flex-1 py-4 bg-verde-militar text-white font-black rounded-xl text-base shadow-md">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL HISTORIAL BARRA -->
+    <div id="modal-historial-barra" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[70] hidden flex-col">
+        <div class="bg-white w-full h-full flex flex-col slide-in">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
+                <h2 class="font-black text-xl text-indigo-900"><i data-lucide="glass-water" class="inline w-5 h-5 mr-2 text-indigo-500 -mt-1"></i>Historial de Barra</h2>
+                <button onclick="cerrarHistorialBarra()" class="p-2 bg-gray-200 rounded-full hover:bg-gray-300 active:scale-90 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-3 bg-white border-b border-gray-100 flex justify-end shrink-0">
+                 <button onclick="borrarHistorialBarraCompleto()" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 px-4 rounded-xl border border-red-200 transition text-sm flex items-center gap-2 shadow-sm">
+                    <i data-lucide="trash" class="w-4 h-4"></i> BORRAR HISTORIAL
+                </button>
+            </div>
+            <div id="lista-historial-barra" class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-3 bg-gray-100 pb-10"></div>
+        </div>
+    </div>
+
+    <!-- MODAL AGOTADOS -->
+    <div id="modal-agotados" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[70] hidden flex-col">
+        <div class="bg-white w-full h-full flex flex-col slide-in">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
+                <h2 class="font-black text-xl text-cafe-madera"><i data-lucide="ban" class="inline w-5 h-5 mr-2 text-red-500 -mt-1"></i>Agotar Bebidas</h2>
+                <button onclick="cerrarAgotados()" class="p-2 bg-gray-200 rounded-full active:scale-90"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-3 bg-red-50 border-b border-red-100 text-xs text-red-700 font-bold text-center shrink-0">
+                Al marcar aquí, la bebida se ocultará para TODOS los meseros.
+            </div>
+            <div id="lista-bebidas-agotadas" class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-2 bg-[#f9f8f6] pb-10"></div>
+        </div>
+    </div>
+
+    <script>
+        function initSession() {
+            let n = sessionStorage.getItem('usuarioNombre'); let r = sessionStorage.getItem('usuarioRol');
+            if(!n) { n = localStorage.getItem('usuarioNombre'); r = localStorage.getItem('usuarioRol');
+                if(n) { sessionStorage.setItem('usuarioNombre', n); sessionStorage.setItem('usuarioRol', r); }
+            } return {nombre: n, rol: r};
+        }
+        
+        const sessionInfo = initSession();
+        const nombre = sessionInfo.nombre;
+        const rol = sessionInfo.rol;
+
+        if (!nombre || (rol !== 'bartender' && rol !== 'administrador')) {
+            window.location.href = "login.html";
+        } else {
+            document.getElementById('body-barra').classList.remove('hidden');
+            document.getElementById('nombre-usuario-header').textContent = nombre.split(" ")[0];
+            if (rol === 'administrador') {
+                document.getElementById('nombre-usuario-header').parentElement.insertAdjacentHTML('beforebegin', `<button onclick="window.location.href='panel_admin.html'" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1 shadow-md transition"><i data-lucide="shield" class="w-3.5 h-3.5"></i> Admin</button>`);
+            }
+            lucide.createIcons();
+        }
+
+        function cerrarSesion() {
+            sessionStorage.clear();
+            localStorage.clear();
+            window.location.replace('login.html?t=' + new Date().getTime());
+        }
+
+        function toggleMenuLateral() {
+            const menu = document.getElementById('menu-lateral');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden'); menu.classList.add('flex');
+            } else {
+                menu.classList.add('hidden'); menu.classList.remove('flex');
+            }
+        }
+
+        function cerrarMenuYAbrir(funcionAbrirModal) {
+            toggleMenuLateral();
+            funcionAbrirModal();
+        }
+
+        // ================= NOTIFICACIONES EN VIVO =================
+        function crearNotificacionFija(titulo, detalle, tipo, idUnico) {
+            const container = document.getElementById('contenedor-notificaciones');
+            const notifId = 'notif-' + idUnico;
+            if(document.getElementById(notifId)) {
+                const alertaExistente = document.getElementById(notifId);
+                alertaExistente.classList.remove('notif-anim'); void alertaExistente.offsetWidth; alertaExistente.classList.add('notif-anim');
+                if (navigator.vibrate) navigator.vibrate([100]); return;
+            }
+            const bgClass = tipo === 'success' ? 'bg-emerald-600' : 'bg-blue-600';
+            const icon = tipo === 'success' ? 'check-circle' : 'info';
+            const div = document.createElement('div');
+            div.id = notifId;
+            div.className = `pointer-events-auto w-full p-4 rounded-xl shadow-[0_15px_30px_rgba(0,0,0,0.5)] border-2 border-white/40 ${bgClass} text-white flex flex-col gap-2 notif-anim`;
+            div.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i data-lucide="${icon}" class="w-8 h-8 flex-shrink-0"></i>
+                    <div class="flex-1">
+                        <h4 class="font-black text-sm uppercase tracking-widest text-white/90 leading-tight">${titulo}</h4>
+                        <p class="text-sm font-medium mt-1 leading-tight">${detalle}</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('${notifId}').remove()" class="w-full py-2 bg-black/30 hover:bg-black/50 rounded-lg font-black text-xs tracking-widest uppercase border border-white/30 active:scale-[0.98] mt-1">OK</button>
+            `;
+            container.prepend(div); lucide.createIcons();
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+
+        const hostBackend = window.location.hostname || "127.0.0.1"; 
+        const API_URL = `http://${hostBackend}:8000/api`;
+        const WS_URL = `ws://${hostBackend}:8000/ws/comandas`;
+        
+        let socket;
+        let bebidasDisponibles = [];
+        let listaAgotadosGlobal = [];
+        
+        // Variables para Delivery en Barra
+        let catalogoCompleto = [];
+        let comandaDelivery = [];
+        let menuActivoDelivery = 'alimentos';
+        let productoTempDelivery = null;
+
+        function iniciarWebSocket() {
+            socket = new WebSocket(WS_URL);
+            socket.onopen = () => { document.getElementById('conexion-estado').textContent = "🟢 Conectado"; };
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.tipo === "NUEVA_COMANDA_BARRA" || data.tipo === "ITEM_DESPACHADO") {
+                    cargarTicketsBarra();
+                } else if (data.tipo === "PROPINAS_ACTUALIZADAS") {
+                    actualizarUIPropinas(data.total);
+                } else if (data.tipo === "AGOTADO_ACTUALIZADO") {
+                    listaAgotadosGlobal = data.lista_agotados;
+                    if(!document.getElementById('modal-agotados').classList.contains('hidden')) renderizarListaAgotados();
+                    if(!document.getElementById('modal-delivery').classList.contains('hidden')) renderizarCatalogoDelivery();
+                } else if (data.tipo === "TIEMPO_PREP") {
+                    // AQUÍ ESTÁ EL FILTRO: Solo notifica si la mesa es "DELIVERY"
+                    if (String(data.mesa).toUpperCase() === 'DELIVERY') {
+                        if (data.minutos === 0) {
+                            crearNotificacionFija('✅ ¡DELIVERY LISTO!', `Los alimentos de Delivery están listos.`, 'success', 'lista-'+data.mesa);
+                        } else {
+                            crearNotificacionFija('⏳ AVISO DELIVERY', `La orden Delivery tardará ${data.minutos} min en cocina.`, 'info', 'tiempo-'+data.mesa);
+                        }
+                    }
+                }
+            };
+            socket.onclose = () => { setTimeout(iniciarWebSocket, 3000); };
+        }
+
+        // ================= 1. TABLERO DE BEBIDAS =================
+        async function cargarTicketsBarra() {
+            try {
+                const res = await fetch(`${API_URL}/barra/pendientes?t=${new Date().getTime()}`);
+                const ordenes = await res.json();
+                renderizarTickets(ordenes);
+            } catch (e) {}
+        }
+
+        function formatoMesa(idMesa) {
+            if (idMesa === 'Delivery') return 'Delivery';
+            if (idMesa.startsWith('T')) return `Mesa ${idMesa.replace('T', '')} (Terr)`;
+            if (idMesa.startsWith('P')) return `Mesa ${idMesa.replace('P', '')} (Patio)`;
+            if (idMesa.startsWith('S')) return `Sala ${idMesa.replace('S', '')}`;
+            return `Mesa ${idMesa}`;
+        }
+
+        window.togglePlatillo = function(el) {
+            const checkbox = el.querySelector('.check-box'); const icon = el.querySelector('.check-icon'); const texto = el.querySelector('.platillo-texto');
+            if (icon.classList.contains('text-transparent')) {
+                icon.classList.replace('text-transparent', 'text-white'); checkbox.classList.replace('border-gray-300', 'border-emerald-500'); checkbox.classList.replace('bg-white', 'bg-emerald-500'); texto.classList.add('line-through', 'opacity-40');
+            } else {
+                icon.classList.replace('text-white', 'text-transparent'); checkbox.classList.replace('border-emerald-500', 'border-gray-300'); checkbox.classList.replace('bg-emerald-500', 'bg-white'); texto.classList.remove('line-through', 'opacity-40');
+            }
+        };
+
+        function renderizarTickets(ordenes) {
+            const grid = document.getElementById('grid-tickets');
+            if (ordenes.length === 0) {
+                grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center text-gray-400 py-20"><i data-lucide="wine" class="w-24 h-24 mb-4 opacity-20"></i><p class="font-black text-xl tracking-widest uppercase">Barra Limpia</p></div>`;
+                lucide.createIcons(); return;
+            }
+
+            grid.innerHTML = ordenes.map(orden => `
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-[0_10px_20px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden">
+                    <div class="bg-negro-carbon px-4 py-3 flex justify-between items-center border-b-4 border-amber-600">
+                        <span class="font-black text-white text-xl">${formatoMesa(orden.mesa)}</span>
+                        <span class="text-xs bg-white/20 text-white px-2 py-1 rounded font-mono">#${orden.orden_id}</span>
+                    </div>
+                    <div class="bg-amber-50/50 px-4 py-1.5 border-b border-amber-100 flex justify-between items-center text-[10px] text-amber-800 font-bold uppercase tracking-wider">
+                        <span class="flex items-center gap-1"><i data-lucide="user" class="w-3.5 h-3.5"></i> ${orden.mesero || 'Mesero'}</span>
+                        <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> ${orden.hora || '--:--'}</span>
+                    </div>
+                    <div class="p-3 flex-1 flex flex-col gap-1 bg-white min-h-[120px]">
+                        ${orden.items.map(item => `
+                            <div class="flex items-start gap-3 cursor-pointer p-3 rounded-xl hover:bg-gray-50 border border-transparent active:scale-[0.98]" onclick="togglePlatillo(this)">
+                                <div class="mt-0.5 w-7 h-7 border-2 border-gray-300 rounded-lg flex justify-center items-center bg-white transition-colors check-box flex-shrink-0">
+                                    <i data-lucide="check" class="w-5 h-5 text-transparent transition-colors check-icon"></i>
+                                </div>
+                                <div class="flex-1 pt-0.5">
+                                    <div class="flex items-start gap-2">
+                                        <span class="font-black text-cafe-madera text-lg bg-gray-100 px-2 rounded border border-gray-200">${item.cantidad}x</span>
+                                        <span class="font-bold text-cafe-madera text-lg leading-tight platillo-texto">${item.producto}</span>
+                                    </div>
+                                    ${item.notas ? `<div class="mt-1 ml-1"><span class="text-amber-700 text-xs font-black bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block uppercase tracking-wide">${item.notas}</span></div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="bg-gray-50 border-t border-gray-200 p-3 flex flex-col gap-2">
+                        <button onclick="avisarLista(this, '${orden.mesa}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl shadow-md transition text-sm tracking-widest active:scale-95">✅ BEBIDAS LISTAS</button>
+                        <button onclick='archivarTicketBarra(this, ${JSON.stringify(orden)})' class="w-full bg-cafe-madera hover:bg-[#4a3328] text-white font-bold py-2.5 rounded-xl transition text-sm opacity-90 active:scale-95"><i data-lucide="trash-2" class="w-4 h-4 inline mb-0.5"></i> LIMPIAR Y ARCHIVAR</button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function avisarLista(btn, mesa) {
+            btn.disabled = true; btn.textContent = "Avisando...";
+            await fetch(`${API_URL}/notificar_tiempo`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mesa: mesa, minutos: 0}) });
+            btn.classList.replace('bg-emerald-600', 'bg-blue-600'); btn.textContent = "¡AVISO ENVIADO!";
+            setTimeout(() => { btn.disabled = false; btn.classList.replace('bg-blue-600', 'bg-emerald-600'); btn.innerHTML = "✅ BEBIDAS LISTAS"; }, 3000);
+        }
+
+        async function archivarTicketBarra(btn, ordenCompleta) {
+            if(!confirm("¿Limpiar y archivar esta orden de barra?")) return;
+            btn.disabled = true; btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto"></i>`; lucide.createIcons();
+            
+            const payload = {
+                detalles_ids: ordenCompleta.items.map(i => i.id_detalle),
+                bartender: nombre.split(" ")[0],
+                mesa: ordenCompleta.mesa,
+                mesero: ordenCompleta.mesero,
+                fecha_hora_creacion: `${ordenCompleta.fecha} ${ordenCompleta.hora}`
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/barra/despachar`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                if(!res.ok) throw new Error("Fallo API");
+                cargarTicketsBarra();
+            } catch (e) { 
+                alert("Error al limpiar"); 
+                btn.disabled = false; btn.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4 inline mb-0.5"></i> LIMPIAR Y ARCHIVAR`; lucide.createIcons();
+            }
+        }
+
+        // ================= 1.5 HISTORIAL DE BARRA =================
+        async function abrirHistorialBarra() {
+            document.getElementById('modal-historial-barra').classList.remove('hidden');
+            const lista = document.getElementById('lista-historial-barra');
+            lista.innerHTML = `<div class="text-center mt-10"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto text-indigo-500"></i></div>`;
+            lucide.createIcons();
+
+            try {
+                const res = await fetch(`${API_URL}/barra/historial?t=${new Date().getTime()}`);
+                const historial = await res.json();
+                
+                if (historial.length === 0) {
+                    lista.innerHTML = `<p class="text-center text-gray-500 font-bold mt-10">No hay comandas archivadas.</p>`;
+                    return;
+                }
+
+                lista.innerHTML = historial.map(h => `
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-3">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-black text-lg text-cafe-madera">${formatoMesa(h.mesa)}</span>
+                                <span class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded uppercase font-bold border border-indigo-200">Despachó: ${h.bartender}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 font-semibold mb-2">Pidió: ${h.mesero} (${h.fecha_creacion}) | Salida: ${h.hora_despacho}</p>
+                            <ul class="text-sm font-bold text-gray-700 list-disc list-inside">
+                                ${h.items.map(i => `<li>${i}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            } catch (e) { lista.innerHTML = `<p class="text-center text-red-500 font-bold mt-10">Error al cargar historial.</p>`; }
+        }
+
+        async function borrarHistorialBarraCompleto() {
+            if(!confirm("¿Estás seguro de borrar TODO el historial de la barra permanentemente?")) return;
+            try {
+                const res = await fetch(`${API_URL}/barra/historial`);
+                const historial = await res.json();
+                await Promise.all(historial.map(h => fetch(`${API_URL}/barra/historial/${h.id}`, {method: 'DELETE'})));
+                alert("Historial borrado con éxito.");
+                abrirHistorialBarra();
+            } catch(e) { alert("Error al borrar el historial."); }
+        }
+        function cerrarHistorialBarra() { document.getElementById('modal-historial-barra').classList.add('hidden'); }
+
+        // ================= 2. AGOTADOS GLOBALES =================
+        async function cargarAgotadosIniciales() {
+            try {
+                const res = await fetch(`${API_URL}/agotados`);
+                listaAgotadosGlobal = await res.json();
+            } catch (e) {}
+        }
+
+        async function abrirAgotados() {
+            document.getElementById('modal-agotados').classList.remove('hidden');
+            try {
+                const resA = await fetch(`${API_URL}/agotados`);
+                listaAgotadosGlobal = await resA.json();
+
+                const resP = await fetch(`${API_URL}/productos`);
+                catalogoCompleto = await resP.json();
+                bebidasDisponibles = catalogoCompleto.filter(p => p.categoria === 'bebidas');
+                renderizarListaAgotados();
+            } catch (e) {}
+        }
+
+        function renderizarListaAgotados() {
+            const lista = document.getElementById('lista-bebidas-agotadas');
+            lista.innerHTML = bebidasDisponibles.map(b => {
+                const estaAgotado = listaAgotadosGlobal.includes(b.id);
+                return `
+                <div class="flex justify-between items-center p-3 border border-gray-200 rounded-xl bg-white shadow-sm ${estaAgotado ? 'opacity-50 grayscale' : ''}">
+                    <span class="font-bold text-sm text-cafe-madera">${b.nombre}</span>
+                    <button onclick="toggleAgotado(${b.id}, '${b.nombre.replace(/'/g, "\\'")}', ${estaAgotado})" class="px-4 py-1.5 rounded-lg text-xs font-black uppercase transition-colors ${estaAgotado ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}">
+                        ${estaAgotado ? 'Agotado' : 'Disponible'}
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        async function toggleAgotado(id, nombreProd, estadoActual) {
+            const nuevoEstado = !estadoActual;
+            if (nuevoEstado) listaAgotadosGlobal.push(id);
+            else listaAgotadosGlobal = listaAgotadosGlobal.filter(x => x !== id);
+            renderizarListaAgotados(); 
+
+            try {
+                await fetch(`${API_URL}/agotados`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({producto_id: id, nombre: nombreProd, agotado: nuevoEstado})
+                });
+            } catch(e) { alert("Error de red."); }
+        }
+        function cerrarAgotados() { document.getElementById('modal-agotados').classList.add('hidden'); }
+
+        // ================= 3. PROPINAS (VISUAL) =================
+        async function cargarPropinasIniciales() {
+            try {
+                const res = await fetch(`${API_URL}/propinas`);
+                const data = await res.json();
+                actualizarUIPropinas(data.total);
+            } catch (e) {}
+        }
+
+        function actualizarUIPropinas(total) {
+            if(document.getElementById('menu-propinas-txt')) {
+                document.getElementById('menu-propinas-txt').textContent = `$${total.toFixed(2)}`;
+            }
+        }
+
+        // ================= DELIVERY DESDE BARRA =================
+        async function abrirDeliveryBarra() {
+            document.getElementById('modal-delivery').classList.remove('hidden');
+            document.getElementById('modal-delivery').classList.add('flex');
+            volverAPaso1Delivery();
+            try {
+                const [resAgotados, resProductos] = await Promise.all([ fetch(`${API_URL}/agotados`), fetch(`${API_URL}/productos`) ]);
+                listaAgotadosGlobal = await resAgotados.json();
+                catalogoCompleto = await resProductos.json();
+            } catch(e) {}
+            renderizarCatalogoDelivery();
+            renderizarComandaDelivery();
+        }
+
+        function irAPaso2Delivery() {
+            document.getElementById('del-paso-1').classList.add('hidden'); document.getElementById('del-paso-1').classList.remove('flex');
+            document.getElementById('del-paso-2').classList.remove('hidden'); document.getElementById('del-paso-2').classList.add('flex');
+        }
+
+        function volverAPaso1Delivery() {
+            document.getElementById('del-paso-2').classList.add('hidden'); document.getElementById('del-paso-2').classList.remove('flex');
+            document.getElementById('del-paso-1').classList.remove('hidden'); document.getElementById('del-paso-1').classList.add('flex');
+        }
+
+        function cerrarDeliveryBarra() {
+            document.getElementById('modal-delivery').classList.add('hidden');
+            document.getElementById('modal-delivery').classList.remove('flex');
+        }
+
+        function cambiarMenuDelivery(tipo) {
+            menuActivoDelivery = tipo;
+            document.getElementById('tab-del-alimentos').className = "flex-1 py-4 text-center font-black text-base text-gris-trinchera border-b-4 border-transparent bg-gray-50 transition";
+            document.getElementById('tab-del-bebidas').className = "flex-1 py-4 text-center font-bold text-base text-gris-trinchera border-b-4 border-transparent bg-gray-50 transition";
+            document.getElementById(`tab-del-${tipo}`).className = "flex-1 py-4 text-center font-black text-base text-verde-militar border-b-4 border-verde-militar bg-white";
+            renderizarCatalogoDelivery();
+        }
+
+        function renderizarCatalogoDelivery() {
+            const area = document.getElementById('area-catalogo-delivery');
+            const productos = catalogoCompleto.filter(p => p.categoria === menuActivoDelivery);
+            area.innerHTML = `<div class="grid grid-cols-2 gap-3 md:gap-4 pb-8">` + productos.map(p => {
+                const estaAgotado = (listaAgotadosGlobal && listaAgotadosGlobal.includes(p.id)) || false;
+                return `
+                <button onclick="${estaAgotado ? '' : `intentarAgregarDelivery(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.precio}, '${p.categoria}')`}" 
+                        class="bg-white border border-gray-200 hover:border-cafe-madera p-4 rounded-2xl shadow-sm active:scale-95 transition-transform flex flex-col justify-between text-left min-h-[100px] relative overflow-hidden ${estaAgotado ? 'opacity-40 grayscale cursor-not-allowed' : ''}">
+                    ${estaAgotado ? '<span class="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">Agotado</span>' : ''}
+                    <span class="font-black text-sm md:text-base text-cafe-madera leading-tight">${p.nombre}</span>
+                    <span class="text-base md:text-lg font-black text-verde-militar mt-2">$${p.precio.toFixed(2)}</span>
+                </button>`;
+            }).join('') + `</div>`;
+        }
+
+        function intentarAgregarDelivery(id, nombreProd, precio, categoria) {
+            const nombreLower = nombreProd.toLowerCase(); 
+            productoTempDelivery = { id, nombre: nombreProd, precio, categoria, notasAcumuladas: [] };
+            
+            if (nombreLower.includes("tiras") || nombreLower.includes("boneless") || nombreLower.includes("alitas")) { abrirModalMDelivery('Salsas', 'Elige salsas', ['Naturales', 'BBQ', 'Búfalo', 'Lemon-Pepper', 'Mango-Habanero', 'Parmesano']); return; }
+            if (nombreLower === "cubeta de cerveza") { abrirModalMDelivery('Marcas (10pz)', 'Elige marcas', ['Victoria', 'Corona', 'Ultra', 'XX', 'Surtida']); return; }
+            if (nombreLower.includes("michelada") || nombreLower.includes("mojito") || nombreLower.includes("azulito") || nombreLower.includes("agua de sabor") || nombreLower.includes("piña colada")) {
+                let precioMedio = precio - 30; let opciones = [{ label: `1/2 Litro ($${precioMedio.toFixed(2)})`, valorBase: 'Medio Litro', precioFinal: precioMedio }, { label: `1 Litro ($${precio.toFixed(2)})`, valorBase: 'Un Litro', precioFinal: precio }];
+                if (nombreLower === "michelada s/alcohol") { abrirModalObjDelivery('Tamaño', 'Elige presentación', opciones, null); } else if (nombreLower.includes("michelada")) { abrirModalObjDelivery('Tamaño', 'Elige presentación', opciones, 'miche'); } else { abrirModalObjDelivery('Tamaño', 'Elige presentación', opciones, null); } return;
+            }
+            if (nombreLower === "cerveza (botella)") { abrirModalSDelivery('Marca', 'Elige marca', ['Victoria', 'Corona', 'Ultra', 'XX']); return; }
+            if (nombreLower === "caguama") { abrirModalSDelivery('Caguama', 'Elige marca', ['Indio', 'Miller', 'XX', 'Victoria', 'Corona']); return; }
+            agregarDirectoDelivery(id, nombreProd, precio, "", categoria);
+        }
+
+        function abrirModalMDelivery(titulo, subtitulo, opciones) {
+            document.getElementById('modal-titulo-del').textContent = titulo; document.getElementById('modal-subtitulo-del').textContent = subtitulo; document.getElementById('modal-acciones-del').classList.remove('hidden');
+            document.getElementById('modal-opciones-del').className = "grid grid-cols-2 gap-3 mb-2 overflow-y-auto pb-2";
+            document.getElementById('modal-opciones-del').innerHTML = opciones.map(opt => `<label class="flex items-center gap-3 p-4 border border-gray-200 rounded-xl active:bg-gray-50"><input type="checkbox" value="${opt}" class="w-6 h-6 text-verde-militar"><span class="text-sm font-bold text-cafe-madera">${opt}</span></label>`).join('');
+            document.getElementById('modal-dinamico-delivery').classList.remove('hidden');
+        }
+        function abrirModalObjDelivery(titulo, subtitulo, opcionesObj, flujo) {
+            productoTempDelivery.flujo = flujo; document.getElementById('modal-titulo-del').textContent = titulo; document.getElementById('modal-subtitulo-del').textContent = subtitulo; document.getElementById('modal-acciones-del').classList.add('hidden');
+            document.getElementById('modal-opciones-del').className = "flex flex-col gap-3 mb-2 overflow-y-auto pb-2";
+            document.getElementById('modal-opciones-del').innerHTML = opcionesObj.map(opt => `<button onclick="opcAutoDelivery('${opt.valorBase}', ${opt.precioFinal})" class="p-5 border border-gray-200 rounded-2xl font-black text-lg text-gray-700 text-left shadow-sm active:scale-95 active:bg-gray-100">${opt.label}</button>`).join('');
+            document.getElementById('modal-dinamico-delivery').classList.remove('hidden');
+        }
+        function abrirModalSDelivery(titulo, subtitulo, opcionesArr) {
+            document.getElementById('modal-titulo-del').textContent = titulo; document.getElementById('modal-subtitulo-del').textContent = subtitulo; document.getElementById('modal-acciones-del').classList.add('hidden');
+            document.getElementById('modal-opciones-del').className = "flex flex-col gap-3 mb-2 overflow-y-auto pb-2";
+            document.getElementById('modal-opciones-del').innerHTML = opcionesArr.map(opt => `<button onclick="opcAutoDelivery('${opt}', null)" class="p-5 border border-gray-200 rounded-2xl font-black text-lg text-gray-700 text-left shadow-sm active:scale-95 active:bg-gray-100">${opt}</button>`).join('');
+            document.getElementById('modal-dinamico-delivery').classList.remove('hidden');
+        }
+        function opcAutoDelivery(valorAnotacion, precioNuevo) {
+            if (precioNuevo !== null) productoTempDelivery.precio = precioNuevo; productoTempDelivery.notasAcumuladas.push(valorAnotacion);
+            if (productoTempDelivery.flujo === 'miche') { abrirModalSDelivery('Cerveza', 'Elige para michelada', ['Miller', 'XX', 'Indio', 'Corona', 'Victoria']); productoTempDelivery.flujo = null; } 
+            else { agregarDirectoDelivery(productoTempDelivery.id, productoTempDelivery.nombre, productoTempDelivery.precio, productoTempDelivery.notasAcumuladas.join(', '), productoTempDelivery.categoria); cerrarModalDelivery(); }
+        }
+        function confirmarOpcionesModalDelivery() {
+            const inputs = document.querySelectorAll('#modal-opciones-del input[type="checkbox"]:checked');
+            if (inputs.length === 0) { alert("Selecciona una opción."); return; }
+            const valores = Array.from(inputs).map(i => i.value).join(', ');
+            productoTempDelivery.notasAcumuladas.push(valores);
+            agregarDirectoDelivery(productoTempDelivery.id, productoTempDelivery.nombre, productoTempDelivery.precio, productoTempDelivery.notasAcumuladas.join(' | '), productoTempDelivery.categoria);
+            cerrarModalDelivery();
+        }
+        function cerrarModalDelivery() { document.getElementById('modal-dinamico-delivery').classList.add('hidden'); productoTempDelivery = null; }
+
+        function agregarDirectoDelivery(id, nombreProd, precio, notasFijas, categoria) {
+            const existente = comandaDelivery.find(i => i.id === id && i.notas === notasFijas);
+            if (existente) existente.cantidad += 1; else comandaDelivery.push({ id, nombre: nombreProd, precio, cantidad: 1, notas: notasFijas, categoria });
+            renderizarComandaDelivery();
+        }
+        function modificarCantDelivery(index, delta) { comandaDelivery[index].cantidad += delta; if (comandaDelivery[index].cantidad <= 0) comandaDelivery.splice(index, 1); renderizarComandaDelivery(); }
+        function eliminarProdDelivery(index) { comandaDelivery.splice(index, 1); renderizarComandaDelivery(); }
+        function actNotaDelivery(index, val) { comandaDelivery[index].notas = val; renderizarComandaDelivery(); }
+
+        function renderizarComandaDelivery() {
+            const lista = document.getElementById('lista-comanda-delivery');
+            let total = 0;
+            if (comandaDelivery.length === 0) {
+                lista.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-gray-400 py-10"><i data-lucide="shopping-bag" class="w-12 h-12 mb-2 opacity-30"></i><p class="font-bold">Orden Vacía</p></div>`;
+                if(document.getElementById('txt-items-del-movil')) document.getElementById('txt-items-del-movil').textContent = `0 Items`;
+                document.getElementById('total-delivery-txt').textContent = `$0.00`;
+                const btn = document.getElementById('btn-enviar-delivery');
+                btn.classList.add('opacity-50', 'cursor-not-allowed'); btn.classList.remove('bg-emerald-600', 'animate-pulse'); btn.disabled = true;
+                lucide.createIcons(); return;
+            }
+
+            lista.innerHTML = comandaDelivery.map((item, idx) => {
+                total += item.precio * item.cantidad;
+                return `
+                <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-2">
+                    <div class="flex justify-between items-start">
+                        <span class="font-bold text-sm text-cafe-madera leading-tight">${item.nombre}</span>
+                        <span class="font-black text-base text-negro-carbon">$${(item.precio * item.cantidad).toFixed(2)}</span>
+                    </div>
+                    <div class="flex flex-col gap-2 border-t border-gray-100 pt-2">
+                        <input type="text" placeholder="Nota..." value="${item.notas}" class="text-xs w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:border-verde-militar bg-gray-50" onchange="actNotaDelivery(${idx}, this.value)">
+                        <div class="flex items-center justify-between">
+                            <button onclick="eliminarProdDelivery(${idx})" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-1 py-0.5">
+                                <button onclick="modificarCantDelivery(${idx}, -1)" class="text-red-600 font-black px-2 hover:bg-gray-200 rounded">-</button>
+                                <span class="text-sm font-black w-4 text-center">${item.cantidad}</span>
+                                <button onclick="modificarCantDelivery(${idx}, 1)" class="text-verde-militar font-black px-2 hover:bg-gray-200 rounded">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            let totalItems = comandaDelivery.reduce((acc, item) => acc + item.cantidad, 0);
+            if(document.getElementById('txt-items-del-movil')) document.getElementById('txt-items-del-movil').textContent = `${totalItems} Items`;
+            
+            document.getElementById('total-delivery-txt').textContent = `$${total.toFixed(2)}`;
+            const btn = document.getElementById('btn-enviar-delivery');
+            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-verde-militar'); btn.classList.add('bg-emerald-600', 'animate-pulse'); btn.disabled = false;
+            lucide.createIcons();
+        }
+
+        async function enviarOrdenDelivery() {
+            const btn = document.getElementById('btn-enviar-delivery');
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> ENVIANDO...`; btn.disabled = true;
+            try {
+                const payload = { 
+                    items: comandaDelivery.map(i => ({ producto_id: i.id, cantidad: i.cantidad, notas: i.notas || "" })),
+                    mesero: nombre.split(" ")[0] + " (Barra)"
+                };
+                
+                const respuesta = await fetch(`${API_URL}/mesas/DELIVERY/comanda`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!respuesta.ok) throw new Error("Error en servidor");
+                
+                comandaDelivery = []; renderizarComandaDelivery(); cerrarDeliveryBarra();
+                alert("Orden Delivery enviada a cocina/barra.");
+            } catch (e) { alert("Error al enviar la orden."); }
+            btn.innerHTML = `<i data-lucide="send" class="w-5 h-5"></i> ENVIAR A COCINA / BARRA`; btn.disabled = false; lucide.createIcons();
+        }
+
+        // Inicialización Final
+        if (nombre && (rol === 'bartender' || rol === 'administrador')) {
+            cargarTicketsBarra();
+            cargarAgotadosIniciales();
+            cargarPropinasIniciales();
+            iniciarWebSocket();
+        }
+    </script>
+</body>
+</html>

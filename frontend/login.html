@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Login - Sistema Pos-Restaurante</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { 'verde-militar': '#4A5D23', 'cafe-madera': '#5C4033', 'gris-trinchera': '#808080', 'negro-carbon': '#1A1A1A' } } }
+        }
+    </script>
+    <style>
+        .fade-in-up { animation: fadeInUp 0.6s ease-out forwards; opacity: 0; transform: translateY(20px); }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        .input-focus-efecto:focus-within { border-color: #4A5D23; box-shadow: 0 0 0 2px rgba(74, 93, 35, 0.2); }
+    </style>
+</head>
+<body class="h-screen w-full relative overflow-hidden bg-negro-carbon font-sans text-gray-800">
+
+    <div class="absolute inset-0 z-0">
+        <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" alt="Fondo Restaurante" class="w-full h-full object-cover" />
+        <div class="absolute inset-0 bg-negro-carbon/70 backdrop-blur-sm"></div>
+    </div>
+
+    <div class="relative z-10 flex flex-col items-center justify-center h-full px-4">
+        <div class="bg-white/95 p-8 rounded-2xl shadow-2xl w-full max-w-md fade-in-up border-t-4 border-verde-militar">
+            
+            <div class="text-center mb-8">
+                <div class="mx-auto w-16 h-16 bg-cafe-madera rounded-full flex items-center justify-center mb-4 shadow-md">
+                    <i data-lucide="shield-half" class="text-white w-8 h-8"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-cafe-madera">Sistema POS</h1>
+                <p class="text-sm text-gris-trinchera font-medium">Restaurante</p>
+            </div>
+
+            <!-- FORMULARIO BLINDADO -->
+            <form id="loginForm" class="space-y-6">
+                <div class="space-y-1">
+                    <label for="usuario" class="text-sm font-semibold text-cafe-madera">Usuario</label>
+                    <div class="flex items-center border-2 border-gray-200 rounded-lg px-3 py-2 bg-white input-focus-efecto transition-all">
+                        <i data-lucide="user" class="text-gris-trinchera w-5 h-5 mr-2"></i>
+                        <input type="text" id="usuario" name="usuario" required class="w-full outline-none bg-transparent text-negro-carbon placeholder-gray-400" placeholder="Ingresa tu usuario">
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label for="password" class="text-sm font-semibold text-cafe-madera">Contraseña</label>
+                    <div class="flex items-center border-2 border-gray-200 rounded-lg px-3 py-2 bg-white input-focus-efecto transition-all">
+                        <i data-lucide="lock" class="text-gris-trinchera w-5 h-5 mr-2"></i>
+                        <input type="password" id="password" name="password" required class="w-full outline-none bg-transparent text-negro-carbon placeholder-gray-400" placeholder="••••••••">
+                        <button type="button" onclick="alternarPassword()" class="focus:outline-none text-gris-trinchera hover:text-verde-militar transition-colors">
+                            <i data-lucide="eye" id="icono-ojo" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btn-login" type="submit" class="w-full bg-verde-militar text-white font-bold py-3 rounded-lg shadow-lg hover:bg-opacity-90 transition-all">
+                    Ingresar
+                </button>
+                
+                <p id="mensaje-error" class="text-red-600 text-sm text-center font-medium hidden">
+                    Credenciales incorrectas. Intenta de nuevo.
+                </p>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (let registration of registrations) { registration.unregister(); }
+            });
+        }
+        const hostBackend = window.location.hostname || "127.0.0.1";
+        const API_URL = `http://${hostBackend}:8000/api`;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        function alternarPassword() {
+            const inputPassword = document.getElementById('password');
+            const iconoOjo = document.getElementById('icono-ojo');
+            if (inputPassword && inputPassword.type === 'password') {
+                inputPassword.type = 'text';
+                if(iconoOjo) iconoOjo.setAttribute('data-lucide', 'eye-off');
+            } else if (inputPassword) {
+                inputPassword.type = 'password';
+                if(iconoOjo) iconoOjo.setAttribute('data-lucide', 'eye');
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // EVENTO ESTRICTO PARA EVITAR RECARGA DE PÁGINA
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Bloquea el comportamiento por defecto de HTML
+
+            const usuario = document.getElementById('usuario').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('btn-login');
+
+            btn.disabled = true;
+            btn.innerHTML = "Conectando...";
+
+            try {
+                const respuesta = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario: usuario, password: password })
+                });
+
+                if (respuesta.ok) {
+                    const datos = await respuesta.json();
+                    
+                    // Guardamos en ambas memorias para no romper tu panel mesero
+                    sessionStorage.setItem('usuarioNombre', datos.nombre);
+                    sessionStorage.setItem('usuarioRol', datos.rol);
+                    localStorage.setItem('usuarioNombre', datos.nombre);
+                    localStorage.setItem('usuarioRol', datos.rol);
+
+                    if (datos.rol === 'administrador') window.location.href = 'panel_admin.html';
+                    else if (datos.rol === 'mesero') window.location.href = 'panel_mesero.html';
+                    else if (datos.rol === 'cocinera') window.location.href = 'panel_cocina.html';
+                    else if (datos.rol === 'bartender') window.location.href = 'panel_barra.html'; 
+                    else window.location.href = 'panel_mesero.html';
+                } else {
+                    mostrarError();
+                    btn.disabled = false;
+                    btn.innerHTML = "Ingresar";
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("No se pudo conectar al servidor.");
+                btn.disabled = false;
+                btn.innerHTML = "Ingresar";
+            }
+        });
+
+        function mostrarError() {
+            const msjError = document.getElementById('mensaje-error');
+            if (msjError) msjError.classList.remove('hidden');
+            
+            const formCard = document.querySelector('.bg-white\\/95') || document.querySelector('form');
+            if (formCard && formCard.animate) {
+                formCard.animate([
+                    { transform: 'translateX(0)' }, { transform: 'translateX(-10px)' },
+                    { transform: 'translateX(10px)' }, { transform: 'translateX(-10px)' },
+                    { transform: 'translateX(10px)' }, { transform: 'translateX(0)' }
+                ], { duration: 400 });
+            }
+        }
+    </script>
+</body>
+</html>

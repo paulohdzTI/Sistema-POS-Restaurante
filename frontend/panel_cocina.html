@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Panel de Cocina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = { theme: { extend: { colors: { 'verde-militar': '#4A5D23', 'cafe-madera': '#5C4033', 'gris-trinchera': '#808080', 'negro-carbon': '#1A1A1A', 'crema-rustico': '#F5F5DC' } } } }
+    </script>
+    <style>
+        body, html { min-height: 100vh; margin: 0; background-color: #f9f8f6; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .slide-in { animation: slideIn 0.2s ease-out forwards; }
+    </style>
+</head>
+<body class="text-negro-carbon font-sans hidden flex-col h-screen" id="body-cocina">
+
+    <header class="bg-negro-carbon text-white h-16 px-4 flex justify-between items-center shadow-lg z-[50] border-b-2 border-verde-militar shrink-0">
+        <div class="flex items-center gap-2 md:gap-3">
+            <div class="bg-cafe-madera p-2 rounded-full hidden sm:block"><i data-lucide="chef-hat" class="w-5 h-5"></i></div>
+            <div class="flex flex-col">
+                <h1 class="font-bold text-lg md:text-xl leading-tight tracking-wide">Cocina</h1>
+                <div class="flex items-center gap-1">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <p class="text-[9px] md:text-[10px] text-green-400 font-bold uppercase tracking-wider" id="conexion-estado">En línea</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5 bg-cafe-madera/80 px-4 py-2 rounded-full border border-white/10 shrink-0">
+                <i data-lucide="user" class="w-4 h-4"></i>
+                <span class="text-sm font-bold truncate max-w-[70px] md:max-w-[100px]" id="nombre-usuario-header">...</span>
+            </div>
+            <!-- Botón Menú Hamburuguesa -->
+            <button onclick="toggleMenuCocina()" class="p-2 bg-gray-700 hover:bg-gray-600 active:scale-95 rounded-full transition">
+                <i data-lucide="menu" class="w-6 h-6 text-white"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MENÚ LATERAL DESLIZABLE -->
+    <div id="menu-lateral-cocina" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden justify-end" onclick="toggleMenuCocina()">
+        <div class="bg-white w-64 h-full shadow-2xl flex flex-col slide-in" onclick="event.stopPropagation()">
+            <div class="p-5 bg-negro-carbon text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Opciones</h3>
+                <button onclick="toggleMenuCocina()"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto">
+                <!-- Propinas -->
+                <div class="flex flex-col items-center justify-center p-6 border-b border-gray-200 bg-gray-50">
+                    <i data-lucide="circle-dollar-sign" class="w-10 h-10 text-emerald-500 mb-2"></i>
+                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Bote Propinas</p>
+                    <span class="text-2xl font-black text-emerald-600 mt-1" id="cocina-propinas-txt">$0.00</span>
+                </div>
+                <!-- Agotados -->
+                <button onclick="cerrarMenuYAbrirCocina(abrirAgotadosCocina)" class="flex items-center gap-3 p-4 hover:bg-red-50 border-b border-gray-100 w-full transition">
+                    <i data-lucide="ban" class="w-5 h-5 text-red-500"></i><span class="font-bold text-gray-800">Agotar Alimentos</span>
+                </button>
+                <!-- Historial -->
+                <button onclick="cerrarMenuYAbrirCocina(abrirHistorial)" class="flex items-center gap-3 p-4 hover:bg-gray-100 border-b border-gray-100 w-full transition">
+                    <i data-lucide="archive" class="w-5 h-5 text-gray-600"></i><span class="font-bold text-gray-800">Historial del Día</span>
+                </button>
+            </div>
+
+            <button onclick="cerrarSesion()" class="flex items-center justify-center gap-3 p-5 bg-red-50 hover:bg-red-100 w-full transition border-t border-red-100 mt-auto">
+                <i data-lucide="log-out" class="w-5 h-5 text-red-600"></i><span class="font-black text-red-600">Cerrar Sesión</span>
+            </button>
+        </div>
+    </div>
+
+    <main class="flex-1 p-3 md:p-6 overflow-y-auto relative bg-[#f9f8f6] custom-scrollbar">
+        <div id="grid-tickets" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 items-start relative z-10 pb-10"></div>
+    </main>
+
+    <!-- MODAL HISTORIAL -->
+    <div id="modal-historial" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex justify-center items-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-3xl">
+                <h2 class="font-black text-xl md:text-2xl text-cafe-madera"><i data-lucide="archive" class="inline w-6 h-6 mr-2 -mt-1"></i>Comandas Archivadas</h2>
+                <button onclick="cerrarHistorial()" class="p-2 bg-gray-200 rounded-full hover:bg-gray-300 active:scale-90 transition"><i data-lucide="x" class="w-6 h-6 text-gray-600"></i></button>
+            </div>
+            <div id="lista-historial" class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-4"></div>
+            <div class="p-4 border-t border-gray-200 bg-white rounded-b-3xl">
+                <button onclick="borrarHistorial()" class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl border border-red-200 transition text-sm flex items-center justify-center gap-2">
+                    <i data-lucide="trash" class="w-5 h-5"></i> BORRAR HISTORIAL DEL DÍA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL AGOTADOS COCINA -->
+    <div id="modal-agotados-cocina" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex justify-center items-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl flex flex-col h-[80vh]">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-3xl shrink-0">
+                <h2 class="font-black text-xl text-cafe-madera"><i data-lucide="ban" class="inline w-5 h-5 mr-2 text-red-500 -mt-1"></i>Agotar Alimentos</h2>
+                <button onclick="cerrarAgotadosCocina()" class="p-2 bg-gray-200 rounded-full active:scale-90"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-3 bg-red-50 border-b border-red-100 text-xs text-red-700 font-bold text-center shrink-0">
+                Al marcar aquí, el alimento se ocultará para TODOS los meseros.
+            </div>
+            <div id="lista-alimentos-agotados" class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-2"></div>
+        </div>
+    </div>
+
+    <script>
+        // SESIONES INDEPENDIENTES
+        function initSession() {
+            let n = sessionStorage.getItem('usuarioNombre');
+            let r = sessionStorage.getItem('usuarioRol');
+            if(!n) {
+                n = localStorage.getItem('usuarioNombre');
+                r = localStorage.getItem('usuarioRol');
+                if(n) {
+                    sessionStorage.setItem('usuarioNombre', n);
+                    sessionStorage.setItem('usuarioRol', r);
+                }
+            }
+            return {nombre: n, rol: r};
+        }
+        
+        const sessionInfo = initSession();
+        const nombre = sessionInfo.nombre;
+        const rol = sessionInfo.rol;
+
+        if (!nombre || (rol !== 'cocinera' && rol !== 'administrador')) {
+            window.location.href = "login.html";
+        } else {
+            document.getElementById('body-cocina').classList.remove('hidden');
+            document.getElementById('nombre-usuario-header').textContent = nombre.split(" ")[0];
+            if (rol === 'administrador') {
+                document.getElementById('nombre-usuario-header').parentElement.insertAdjacentHTML('beforebegin', `<button onclick="window.location.href='panel_admin.html'" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1 shadow-md transition"><i data-lucide="shield" class="w-3.5 h-3.5"></i> Admin</button>`);
+            }
+            lucide.createIcons();
+        }
+
+        function cerrarSesion() {
+            sessionStorage.clear();
+            localStorage.clear();
+            window.location.replace('login.html?t=' + new Date().getTime());
+        }
+        function toggleMenuCocina() {
+            const menu = document.getElementById('menu-lateral-cocina');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden'); menu.classList.add('flex');
+            } else {
+                menu.classList.add('hidden'); menu.classList.remove('flex');
+            }
+            lucide.createIcons();
+        }
+
+        function cerrarMenuYAbrirCocina(funcionAbrirModal) {
+            toggleMenuCocina();
+            funcionAbrirModal();
+        }
+
+        const hostBackend = window.location.hostname || "127.0.0.1"; 
+        const API_URL = `http://${hostBackend}:8000/api`;
+        const WS_URL = `ws://${hostBackend}:8000/ws/comandas`;
+        let socket;
+        let ticketsGlobales = []; 
+        let historialTickets = JSON.parse(localStorage.getItem('historial_cocina')) || [];
+        let alimentosDisponibles = [];
+        let listaAgotadosGlobal = [];
+
+        async function cargarPropinasIniciales() {
+            try {
+                const res = await fetch(`${API_URL}/propinas`);
+                const data = await res.json();
+                document.getElementById('cocina-propinas-txt').textContent = `$${data.total.toFixed(2)}`;
+            } catch (e) {}
+        }
+
+        function iniciarWebSocket() {
+            socket = new WebSocket(WS_URL);
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.tipo === "NUEVA_COMANDA_COCINA" || data.tipo === "NUEVA_COMANDA_BARRA") {
+                    cargarTickets();
+                } else if (data.tipo === "PROPINAS_ACTUALIZADAS") {
+                    document.getElementById('cocina-propinas-txt').textContent = `$${data.total.toFixed(2)}`;
+                } else if (data.tipo === "AGOTADO_ACTUALIZADO") {
+                    listaAgotadosGlobal = data.lista_agotados || [];
+                    if(!document.getElementById('modal-agotados-cocina').classList.contains('hidden')) renderizarAgotadosCocina();
+                }
+            };
+            socket.onclose = () => { setTimeout(iniciarWebSocket, 3000); };
+        }
+
+        function formatoMesa(idMesa) {
+            if (idMesa === 'Delivery') return 'Delivery';
+            if (idMesa.startsWith('T')) return `Mesa ${idMesa.replace('T', '')} (Terr)`;
+            if (idMesa.startsWith('P')) return `Mesa ${idMesa.replace('P', '')} (Patio)`;
+            if (idMesa.startsWith('S')) return `Sala ${idMesa.replace('S', '')}`;
+            return `Mesa ${idMesa}`;
+        }
+
+        async function cargarTickets() {
+            try {
+                const res = await fetch(`${API_URL}/cocina/pendientes?t=${new Date().getTime()}`);
+                const ordenes = await res.json();
+                ticketsGlobales = ordenes;
+                renderizarTickets(ordenes);
+            } catch (e) {}
+        }
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === 'visible') {
+                cargarTickets();
+                if (socket && socket.readyState !== WebSocket.OPEN) iniciarWebSocket();
+            }
+        });
+
+        window.togglePlatillo = function(el) {
+            const checkbox = el.querySelector('.check-box');
+            const icon = el.querySelector('.check-icon');
+            const texto = el.querySelector('.platillo-texto');
+            const nota = el.querySelector('.platillo-nota');
+            
+            if (icon.classList.contains('text-transparent')) {
+                icon.classList.replace('text-transparent', 'text-white');
+                checkbox.classList.replace('border-gray-300', 'border-emerald-500');
+                checkbox.classList.replace('bg-white', 'bg-emerald-500');
+                texto.classList.add('line-through', 'opacity-40');
+                if(nota) nota.classList.add('opacity-40');
+            } else {
+                icon.classList.replace('text-white', 'text-transparent');
+                checkbox.classList.replace('border-emerald-500', 'border-gray-300');
+                checkbox.classList.replace('bg-emerald-500', 'bg-white');
+                texto.classList.remove('line-through', 'opacity-40');
+                if(nota) nota.classList.remove('opacity-40');
+            }
+        };
+
+        function renderizarTickets(ordenes) {
+            const grid = document.getElementById('grid-tickets');
+            if (ordenes.length === 0) {
+                grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center text-gray-400 py-20"><i data-lucide="check-circle" class="w-24 h-24 mb-4 opacity-20"></i><p class="font-black text-xl tracking-widest uppercase">Cocina Limpia</p></div>`;
+                lucide.createIcons(); return;
+            }
+
+            grid.innerHTML = ordenes.map(orden => `
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-[0_10px_20px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden">
+                    <div class="bg-verde-militar px-5 py-4 flex justify-between items-center">
+                        <span class="font-black text-white text-xl md:text-2xl">${formatoMesa(orden.mesa)}</span>
+                        <span class="text-xs bg-black/40 text-white px-2 py-1 rounded font-mono shadow-inner">#${orden.orden_id}</span>
+                    </div>
+                    <div class="bg-emerald-50/50 px-4 py-2 border-b border-emerald-100 flex justify-between items-center text-[10px] md:text-[11px] text-emerald-800 font-bold uppercase tracking-wider">
+                        <span class="flex items-center gap-1"><i data-lucide="user" class="w-3.5 h-3.5"></i> ${orden.mesero || 'Desconocido'}</span>
+                        <span class="flex items-center gap-1"><i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> ${orden.fecha || '--/--/----'} ${orden.hora || '--:--'}</span>
+                    </div>
+                    <div class="p-3 flex-1 flex flex-col gap-1 bg-white min-h-[150px]">
+                        ${orden.items.map(item => `
+                            <div class="flex items-start gap-3 cursor-pointer group p-3 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-100 active:scale-[0.98]" onclick="togglePlatillo(this)">
+                                <div class="mt-0.5 w-7 h-7 border-2 border-gray-300 rounded-lg flex justify-center items-center bg-white transition-colors check-box flex-shrink-0">
+                                    <i data-lucide="check" class="w-5 h-5 text-transparent transition-colors check-icon"></i>
+                                </div>
+                                <div class="flex-1 pt-0.5">
+                                    <div class="flex items-start gap-2">
+                                        <span class="font-black text-cafe-madera text-xl bg-gray-100 px-2 rounded-lg border border-gray-200 leading-tight">${item.cantidad}x</span>
+                                        <span class="font-bold text-cafe-madera text-xl leading-tight platillo-texto transition-all">${item.producto}</span>
+                                    </div>
+                                    ${item.notas ? `<div class="mt-2 ml-1 platillo-nota transition-all"><span class="text-red-700 text-sm font-black bg-red-50 px-2 py-1 rounded-md border border-red-200 inline-block uppercase tracking-wide"><i data-lucide="info" class="inline w-3.5 h-3.5 mr-1 mb-0.5"></i>${item.notas}</span></div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="bg-gray-50 border-t border-gray-200 p-4 flex flex-col gap-3">
+                        <div class="flex gap-2">
+                            <select id="tiempo-${orden.mesa}" class="w-[40%] text-sm border border-gray-300 rounded-xl p-3 font-bold text-gray-700 shadow-sm focus:outline-none">
+                                <option value="2">2 min</option>
+                                <option value="5">5 min</option>
+                                <option value="10">10 min</option>
+                                <option value="15" selected>15 min</option>
+                                <option value="20">20 min</option>
+                                <option value="30">30 min</option>
+                            </select>
+                            <button onclick="avisarTiempo(this, '${orden.mesa}')" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded-xl transition text-sm shadow-sm active:scale-95 flex items-center justify-center gap-1.5">
+                                <i data-lucide="clock" class="w-4 h-4"></i> Avisar
+                            </button>
+                        </div>
+                        <button onclick="avisarLista(this, '${orden.mesa}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-xl shadow-md transition text-sm md:text-base tracking-widest active:scale-95 flex justify-center items-center gap-2">
+                            <i data-lucide="bell-ring" class="w-5 h-5"></i> ORDEN LISTA
+                        </button>
+                        <button onclick="archivarTicket(this, '${orden.mesa}')" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition text-sm mt-2 shadow-sm active:scale-95 flex justify-center items-center gap-2 uppercase tracking-widest border border-red-800">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i> LIMPIAR
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function avisarTiempo(btn, mesa) {
+            const min = document.getElementById(`tiempo-${mesa}`).value;
+            btn.disabled = true; btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>`; lucide.createIcons();
+            await fetch(`${API_URL}/notificar_tiempo`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mesa: mesa, minutos: parseInt(min)})
+            });
+            btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> ¡Enviado!`; lucide.createIcons();
+            setTimeout(() => { btn.disabled = false; btn.innerHTML = `<i data-lucide="clock" class="w-4 h-4"></i> Avisar`; lucide.createIcons(); }, 2000);
+        }
+
+        async function avisarLista(btn, mesa) {
+            btn.disabled = true; btn.textContent = "Avisando...";
+            await fetch(`${API_URL}/notificar_tiempo`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mesa: mesa, minutos: 0})
+            });
+            btn.classList.replace('bg-emerald-600', 'bg-blue-600');
+            btn.textContent = "¡AVISO ENVIADO!";
+            setTimeout(() => { 
+                btn.disabled = false; 
+                btn.classList.replace('bg-blue-600', 'bg-emerald-600');
+                btn.innerHTML = `<i data-lucide="bell-ring" class="w-5 h-5 inline mr-2 -mt-1"></i> ORDEN LISTA`; 
+                lucide.createIcons();
+            }, 3000);
+        }
+
+        async function archivarTicket(btn, mesa) {
+            if(!confirm("¿Limpiar esta comanda de la pantalla?")) return;
+            btn.disabled = true; btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto"></i>`; lucide.createIcons();
+            
+            const ticketActual = ticketsGlobales.find(t => String(t.mesa) === String(mesa));
+            if (ticketActual) {
+                historialTickets.unshift({
+                    mesa: ticketActual.mesa,
+                    mesero: ticketActual.mesero,
+                    fecha_creacion: ticketActual.fecha,
+                    hora_creacion: ticketActual.hora,
+                    hora_archivado: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                    items: ticketActual.items
+                });
+                localStorage.setItem('historial_cocina', JSON.stringify(historialTickets));
+
+                const detallesIds = ticketActual.items.map(i => i.id_detalle);
+                try {
+                    await Promise.all(detallesIds.map(id => fetch(`${API_URL}/despachar_item/${id}`, { method: 'POST' })));
+                    cargarTickets();
+                } catch (e) { alert("Error al limpiar"); btn.disabled = false; btn.innerHTML = `<i data-lucide="trash-2" class="w-5 h-5"></i> LIMPIAR`; lucide.createIcons(); }
+            }
+        }
+
+        function abrirHistorial() {
+            const lista = document.getElementById('lista-historial');
+            if (historialTickets.length === 0) {
+                lista.innerHTML = `<p class="text-center text-gray-400 font-bold mt-10">Historial Vacío.</p>`;
+            } else {
+                lista.innerHTML = historialTickets.map(ticket => `
+                    <div class="border border-gray-200 rounded-xl p-4 bg-white shadow-sm flex flex-col gap-2">
+                        <div class="flex justify-between items-start border-b border-gray-100 pb-2">
+                            <div>
+                                <span class="font-black text-lg text-cafe-madera">${formatoMesa(ticket.mesa)}</span>
+                                <p class="text-xs font-bold text-emerald-700 mt-0.5"><i data-lucide="user" class="inline w-3 h-3 mr-1"></i>${ticket.mesero}</p>
+                            </div>
+                            <div class="text-right flex flex-col items-end gap-1">
+                                <span class="text-[10px] px-2 py-0.5 bg-gray-100 rounded text-gray-500 font-bold uppercase border border-gray-200">Creada: ${ticket.fecha_creacion} - ${ticket.hora_creacion}</span>
+                                <span class="text-[10px] px-2 py-0.5 bg-emerald-50 rounded text-emerald-700 font-bold uppercase border border-emerald-200">Archivada: ${ticket.hora_archivado}</span>
+                            </div>
+                        </div>
+                        <ul class="text-sm md:text-base font-bold text-gray-700 mt-2 space-y-1">
+                            ${ticket.items.map(i => `<li><span class="text-gray-400 mr-1">${i.cantidad}x</span>${i.producto}</li>`).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            }
+            document.getElementById('modal-historial').classList.remove('hidden');
+        }
+
+        function borrarHistorial() {
+            if(confirm("¿Estás seguro de borrar todo el historial del día? Esto no se puede deshacer.")) {
+                historialTickets = [];
+                localStorage.removeItem('historial_cocina');
+                abrirHistorial();
+            }
+        }
+        function cerrarHistorial() { document.getElementById('modal-historial').classList.add('hidden'); }
+
+        async function abrirAgotadosCocina() {
+            document.getElementById('modal-agotados-cocina').classList.remove('hidden');
+            try {
+                const resA = await fetch(`${API_URL}/agotados`);
+                listaAgotadosGlobal = await resA.json();
+
+                const resP = await fetch(`${API_URL}/productos`);
+                const prods = await resP.json();
+                alimentosDisponibles = prods.filter(p => p.categoria === 'alimentos');
+                renderizarAgotadosCocina();
+            } catch (e) {}
+        }
+
+        function renderizarAgotadosCocina() {
+            const lista = document.getElementById('lista-alimentos-agotados');
+            lista.innerHTML = alimentosDisponibles.map(b => {
+                const estaAgotado = listaAgotadosGlobal.includes(b.id);
+                return `
+                <div class="flex justify-between items-center p-3 border border-gray-200 rounded-xl bg-white shadow-sm ${estaAgotado ? 'opacity-50 grayscale' : ''}">
+                    <span class="font-bold text-sm text-cafe-madera">${b.nombre}</span>
+                    <button onclick="toggleAgotadoCocina(${b.id}, '${b.nombre.replace(/'/g, "\\'")}', ${estaAgotado})" class="px-4 py-1.5 rounded-lg text-xs font-black uppercase transition-colors ${estaAgotado ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}">
+                        ${estaAgotado ? 'Agotado' : 'Disponible'}
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        async function toggleAgotadoCocina(id, nombreProd, estadoActual) {
+            const nuevoEstado = !estadoActual;
+            if (nuevoEstado) listaAgotadosGlobal.push(id);
+            else listaAgotadosGlobal = listaAgotadosGlobal.filter(x => x !== id);
+            renderizarAgotadosCocina();
+
+            try {
+                await fetch(`${API_URL}/agotados`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({producto_id: id, nombre: nombreProd, agotado: nuevoEstado})
+                });
+            } catch(e) { alert("Error al actualizar"); }
+        }
+        function cerrarAgotadosCocina() { document.getElementById('modal-agotados-cocina').classList.add('hidden'); }
+
+        if (nombre && (rol === 'cocinera' || rol === 'administrador')) {
+            cargarPropinasIniciales();
+            cargarTickets();
+            iniciarWebSocket();
+        }
+    </script>
+</body>
+</html>

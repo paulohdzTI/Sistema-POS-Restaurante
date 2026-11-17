@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Panel de Mesero</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { 'verde-militar': '#4A5D23', 'cafe-madera': '#5C4033', 'gris-trinchera': '#808080', 'negro-carbon': '#1A1A1A', 'crema-rustico': '#F5F5DC', 'menu-fondo': '#EBE5D9', 'menu-borde': '#D1C7B3' } } }
+        }
+    </script>
+    <style>
+        body, html { min-height: 100vh; margin: 0; background-color: #f9f8f6; overflow-x: hidden; }
+        .tab-content { display: none; animation: fadeIn 0.2s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .mesa-visual { position: relative; transition: all 0.2s ease; border-width: 2px; border-style: solid; }
+        .mesa-visual::before { content: ''; position: absolute; top: -4px; bottom: -4px; left: 10px; right: 10px; border-left-width: 2px; border-right-width: 2px; border-style: solid; border-radius: 4px; z-index: -1; }
+        .mesa-libre { border-color: #10B981; background-color: #ECFDF5; }
+        .mesa-libre::before { border-color: #10B981; background: #D1FAE5; }
+        .mesa-ocupada { border-color: #EF4444; background-color: #FEF2F2; }
+        .mesa-ocupada::before { border-color: #EF4444; background: #FEE2E2; }
+        .mesa-limpieza { border-color: #F59E0B; background-color: #FFFBEB; }
+        .mesa-limpieza::before { border-color: #F59E0B; background: #FEF3C7; }
+        .mesa-seleccionada { box-shadow: 0 0 0 4px rgba(74, 93, 35, 0.4); transform: scale(0.95); border-color: #4A5D23 !important; }
+        .notif-anim { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { from { transform: scale(0.8) translateY(-20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .slide-in { animation: slideIn 0.2s ease-out forwards; }
+    </style>
+</head>
+<body class="text-negro-carbon font-sans pb-32 hidden" id="body-mesero">
+
+    <div id="contenedor-notificaciones" class="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-3 w-[92%] md:w-[400px] pointer-events-none"></div>
+
+   <header class="sticky top-0 bg-negro-carbon text-white h-16 px-4 flex justify-between items-center shadow-lg z-[50] border-b-2 border-verde-militar">
+        <div class="flex items-center gap-3">
+            <div class="bg-cafe-madera p-2 rounded-full"><i data-lucide="shield-half" class="w-6 h-6"></i></div>
+            <h1 class="font-bold text-xl leading-tight tracking-wide">Sistema POS</h1>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5 bg-cafe-madera/80 px-4 py-2 rounded-full border border-white/10 shrink-0">
+                <i data-lucide="user" class="w-4 h-4"></i>
+                <span class="text-sm font-bold truncate" id="nombre-usuario-header">...</span>
+            </div>
+            <!-- Botón Menú Hamburuguesa -->
+            <button onclick="toggleMenuMesero()" class="p-2 bg-gray-700 hover:bg-gray-600 active:scale-95 rounded-full transition">
+                <i data-lucide="menu" class="w-6 h-6 text-white"></i>
+            </button>
+        </div>
+    </header>
+    <!-- MENÚ LATERAL DESLIZABLE -->
+    <div id="menu-lateral-mesero" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden justify-end" onclick="toggleMenuMesero()">
+        <div class="bg-white w-64 h-full shadow-2xl flex flex-col slide-in" onclick="event.stopPropagation()">
+            <div class="p-5 bg-negro-carbon text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Opciones</h3>
+                <button onclick="toggleMenuMesero()"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto">
+                <div class="flex flex-col items-center justify-center p-6 border-b border-gray-200 bg-gray-50">
+                    <i data-lucide="circle-dollar-sign" class="w-12 h-12 text-emerald-500 mb-2"></i>
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Mis Propinas (Turno)</p>
+                    <span class="text-3xl font-black text-emerald-600 mt-1" id="mesero-propinas-txt">$0.00</span>
+                </div>
+            </div>
+
+            <button onclick="cerrarSesion()" class="flex items-center justify-center gap-3 p-5 bg-red-50 hover:bg-red-100 w-full transition border-t border-red-100 mt-auto">
+                <i data-lucide="log-out" class="w-5 h-5 text-red-600"></i><span class="font-black text-red-600">Cerrar Sesión</span>
+            </button>
+        </div>
+    </div>
+
+    <main class="w-full max-w-5xl mx-auto p-3 flex flex-col gap-6 md:gap-8 md:flex-row items-start">
+        <section id="seccion-mesas" class="w-full md:w-1/2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+            <div class="px-3 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <div class="flex gap-2 flex-1" id="tabs-zonas">
+                    <button onclick="cambiarZona('terraza')" id="tab-terraza" class="flex-1 py-2.5 rounded-lg text-sm font-bold bg-verde-militar text-white transition-colors shadow-sm">Terraza</button>
+                    <button onclick="cambiarZona('patio')" id="tab-patio" class="flex-1 py-2.5 rounded-lg text-sm font-bold bg-white border border-gray-200 text-gris-trinchera transition-colors">Patio / Salas</button>
+                </div>
+            </div>
+            <div class="p-4 bg-[#f9f8f6]">
+                <div id="zona-terraza" class="tab-content active"><div class="grid grid-cols-3 gap-3 md:gap-4" id="grid-terraza"></div></div>
+                <div id="zona-patio" class="tab-content"><div class="grid grid-cols-2 gap-4" id="grid-patio"></div></div>
+                <div id="zona-delivery" class="tab-content">
+                    <div class="flex flex-col items-center justify-center py-10">
+                        <i data-lucide="bike" class="w-16 h-16 text-gray-300 mb-4"></i>
+                        <button onclick="iniciarOrdenDelivery()" class="bg-verde-militar text-white font-bold py-4 px-6 rounded-2xl shadow-md text-base active:scale-95 transition-transform"><i data-lucide="plus" class="w-5 h-5 inline mr-2"></i> Nueva Orden Delivery</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="area-comanda" class="w-full md:w-1/2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col pt-2 scroll-mt-20">
+            <div class="flex justify-between items-center px-4 mb-2">
+                <div class="flex items-center bg-gray-100 border border-gray-200 rounded-lg p-1 w-full max-w-xs mx-auto">
+                    <button onclick="setServicio('local')" id="btn-srv-local" class="flex-1 py-2 rounded bg-white shadow-sm text-verde-militar font-black text-sm">Servicio Local</button>
+                    <button onclick="setServicio('llevar')" id="btn-srv-llevar" class="flex-1 py-2 rounded text-gray-500 font-bold text-sm">Para Llevar</button>
+                </div>
+            </div>
+            <div class="px-4 py-4 border-b border-gray-200 bg-cafe-madera/5 flex justify-between items-center mt-2">
+                <div>
+                    <h2 class="font-black text-2xl text-cafe-madera truncate" id="mesa-activa-titulo">Sin Seleccionar</h2>
+                    <p class="text-xs text-gray-500 font-semibold" id="mesa-creador-info"></p>
+                </div>
+                <span class="px-3 py-1 bg-white text-gray-500 border border-gray-200 rounded-lg text-sm font-black uppercase shadow-sm" id="mesa-estado-txt">INACTIVA</span>
+            </div>
+            <div id="panel-limpieza" class="hidden p-6 bg-amber-50 border-b border-amber-200 flex flex-col items-center gap-3 text-center">
+                <i data-lucide="sparkles" class="w-10 h-10 text-amber-600"></i>
+                <p class="font-bold text-amber-900 text-sm">Esta mesa ha sido pagada y está pendiente de limpieza.</p>
+                <button onclick="confirmarMesaLimpia()" class="w-full bg-emerald-600 text-white font-black py-3.5 rounded-xl shadow-md active:scale-95 transition">
+                    CONFIRMAR MESA LIMPIA Y LIBERAR
+                </button>
+            </div>
+            <div id="panel-consumo-actual" class="hidden p-4 bg-gray-50 border-b border-gray-200 flex flex-col gap-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-black text-gray-500 uppercase tracking-widest">Consumo acumulado:</span>
+                    <span class="text-sm font-black text-cafe-madera" id="consumo-acumulado-total">$0.00</span>
+                </div>
+                <div id="lista-consumo-acumulado" class="max-h-36 overflow-y-auto custom-scrollbar text-xs font-semibold text-gray-700 space-y-1"></div>
+            </div>
+            <div class="flex border-b border-gray-200 bg-gray-50">
+                <button onclick="cambiarMenu('alimentos')" id="tab-menu-alimentos" class="flex-1 py-4 text-center font-black text-base text-verde-militar border-b-4 border-verde-militar bg-white">Alimentos</button>
+                <button onclick="cambiarMenu('bebidas')" id="tab-menu-bebidas" class="flex-1 py-4 text-center font-bold text-base text-gris-trinchera border-b-4 border-transparent">Bebidas</button>
+            </div>
+            <div class="p-3 md:p-4 bg-white" id="area-catalogo"></div>
+        </section>
+    </main>
+
+    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 shadow-[0_-10px_30px_rgba(0,0,0,0.15)] z-40 flex justify-between items-center gap-4">
+        <div class="flex flex-col items-start min-w-[35%]">
+            <span class="text-sm text-gray-500 font-bold" id="total-articulos-txt">0 Nuevos</span>
+            <span class="text-3xl font-black text-negro-carbon leading-none mt-1" id="total-dinero-txt">$0.00</span>
+        </div>
+        <button onclick="abrirModalConfirmacion()" class="flex-1 max-w-sm bg-verde-militar text-white font-black py-4 rounded-xl opacity-50 cursor-not-allowed text-lg active:scale-[0.98] transition-transform shadow-md" id="btn-enviar" disabled>
+            REVISAR ORDEN
+        </button>
+    </div>
+
+    <!-- MODAL CONFIRMACIÓN -->
+    <div id="modal-confirmacion" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[80] flex flex-col justify-end md:justify-center hidden">
+        <div class="bg-white rounded-t-3xl p-5 w-full max-w-[600px] mx-auto md:rounded-3xl shadow-2xl flex flex-col h-[90vh] md:h-[85vh]">
+            <div class="flex justify-between items-center mb-5 shrink-0">
+                <h3 class="text-3xl font-black text-cafe-madera">Confirmar</h3>
+                <button onclick="cerrarModalConfirmacion()" class="p-3 bg-gray-100 rounded-full active:scale-90 transition"><i data-lucide="x" class="w-5 h-5 text-gray-500"></i></button>
+            </div>
+            <div id="lista-confirmacion" class="overflow-y-auto custom-scrollbar flex-1 space-y-4 bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-200 shadow-inner"></div>
+            <div class="flex justify-between items-center px-2 py-4 border-t border-gray-200 shrink-0">
+                <span class="text-gray-500 font-black text-base uppercase tracking-widest">Adicional a Enviar:</span>
+                <span class="text-4xl font-black text-verde-militar" id="total-confirmacion-txt">$0.00</span>
+            </div>
+            <div class="flex gap-3 shrink-0 pb-6 md:pb-0">
+                <button onclick="cerrarModalConfirmacion()" class="w-[30%] py-4 text-gray-600 font-bold bg-gray-200 rounded-2xl text-base active:bg-gray-300">Volver</button>
+                <button onclick="ejecutarEnvioAPI()" class="w-[70%] py-4 bg-verde-militar text-white font-black rounded-2xl shadow-lg flex justify-center items-center gap-3 text-xl active:scale-[0.98]" id="btn-confirmar-envio">
+                    <i data-lucide="send" class="w-6 h-6"></i> ¡ENVIAR A COCINA!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE OPCIONES -->
+    <div id="modal-dinamico" class="fixed inset-0 bg-negro-carbon/90 backdrop-blur-sm z-[70] flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-[400px] shadow-2xl relative flex flex-col max-h-[85vh]">
+            <button onclick="cerrarModal()" class="absolute top-4 right-4 p-2 text-gray-400 active:scale-90"><i data-lucide="x" class="w-8 h-8"></i></button>
+            <h3 class="text-2xl font-black text-cafe-madera mb-2 pr-8" id="modal-titulo">Opciones</h3>
+            <p class="text-base text-gris-trinchera mb-6" id="modal-subtitulo">Selecciona tu preferencia</p>
+            <div id="modal-opciones" class="flex flex-col gap-3 mb-2 overflow-y-auto custom-scrollbar pb-4"></div>
+            <div id="modal-acciones" class="flex gap-3 hidden pt-4 border-t border-gray-100 mt-2">
+                <button onclick="cerrarModal()" class="flex-1 py-4 text-gray-600 font-bold bg-gray-100 rounded-xl text-base">Cancelar</button>
+                <button onclick="confirmarOpcionesModal()" class="flex-1 py-4 bg-verde-militar text-white font-black rounded-xl text-base shadow-md">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function initSession() {
+            let n = sessionStorage.getItem('usuarioNombre');
+            let r = sessionStorage.getItem('usuarioRol');
+            if(!n) { n = localStorage.getItem('usuarioNombre'); r = localStorage.getItem('usuarioRol');
+                if(n) { sessionStorage.setItem('usuarioNombre', n); sessionStorage.setItem('usuarioRol', r); }
+            } return {nombre: n, rol: r};
+        }
+        
+        const sessionInfo = initSession();
+        const nombre = sessionInfo.nombre;
+        const rol = sessionInfo.rol;
+
+        if (!nombre) { window.location.href = "login.html"; } 
+        else {
+            document.getElementById('body-mesero').classList.remove('hidden');
+            document.getElementById('nombre-usuario-header').textContent = nombre.split(" ")[0];
+            if (rol === 'administrador') {
+                document.getElementById('nombre-usuario-header').parentElement.insertAdjacentHTML('beforebegin', `<button onclick="window.location.href='panel_admin.html'" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1 shadow-md transition"><i data-lucide="shield" class="w-3.5 h-3.5"></i> Admin</button>`);
+            }
+            lucide.createIcons();
+        }
+
+        function cerrarSesion() {
+            sessionStorage.clear();
+            localStorage.clear();
+            window.location.replace('login.html?t=' + new Date().getTime());
+        }
+
+        function toggleMenuMesero() {
+            const menu = document.getElementById('menu-lateral-mesero');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden'); menu.classList.add('flex');
+            } else {
+                menu.classList.add('hidden'); menu.classList.remove('flex');
+            }
+            lucide.createIcons();
+        }
+
+        let mesaSeleccionadaId = null; let mesaSeleccionadaEstado = 'libre'; let zonaActivaPrevia = 'terraza'; let catalogoProductos = []; let comandaActual = []; let menuActivo = 'alimentos'; let totalComanda = 0; let productoTemp = null; 
+        const hostBackend = window.location.hostname || "127.0.0.1"; 
+        const API_URL = `http://${hostBackend}:8000/api`;
+        const WS_URL = `ws://${hostBackend}:8000/ws/comandas`;
+        let socketMesero;
+        let listaAgotadosGlobal = [];
+
+        const mesasTerraza = [{ id: 'T1', n: '1', cap: 3, est: 'libre' }, { id: 'T2', n: '2', cap: 3, est: 'libre' }, { id: 'T3', n: '3', cap: 3, est: 'libre' }, { id: 'T4', n: '4', cap: 4, est: 'libre' }, { id: 'T5', n: '5', cap: 6, est: 'libre' }, { id: 'T6', n: '6', cap: 3, est: 'libre' }, { id: 'T7', n: '7', cap: 8, est: 'libre' }, { id: 'T8', n: '8', cap: 4, est: 'libre' }, { id: 'T9', n: '9', cap: 4, est: 'libre' }, { id: 'T10', n: '10', cap: 4, est: 'libre' }, { id: 'T11', n: '11', cap: 4, est: 'libre' }];
+        const mesasPatio = [{ id: 'P1', n: '1', cap: 4, est: 'libre' }, { id: 'P2', n: '2', cap: 3, est: 'libre' }, { id: 'P3', n: '3', cap: 3, est: 'libre' }, { id: 'P4', n: '4', cap: 3, est: 'libre' }, { id: 'S1', n: 'Sala 1', cap: 7, est: 'libre' }, { id: 'S2', n: 'Sala 2', cap: 8, est: 'libre' }];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if(nombre) {
+                generarMesasVisuales(mesasTerraza, 'grid-terraza'); generarMesasVisuales(mesasPatio, 'grid-patio');
+                cargarAgotadosIniciales().then(() => cargarMenuAPI()); 
+                sincronizarMesasDB(); cargarPropinasIniciales(); iniciarWebSocketMesero();
+            }
+        });
+
+        async function cargarPropinasIniciales() {
+            try {
+                const res = await fetch(`${API_URL}/propinas`);
+                const data = await res.json();
+                document.getElementById('mesero-propinas-txt').textContent = `$${data.total.toFixed(2)}`;
+            } catch (e) {}
+        }
+
+        async function cargarAgotadosIniciales() {
+            try {
+                const res = await fetch(`${API_URL}/agotados`);
+                listaAgotadosGlobal = await res.json();
+            } catch (e) {}
+        }
+
+        function crearNotificacionFija(titulo, detalle, tipo, idUnico) {
+            const container = document.getElementById('contenedor-notificaciones');
+            const notifId = 'notif-' + idUnico;
+            if(document.getElementById(notifId)) {
+                const alertaExistente = document.getElementById(notifId);
+                alertaExistente.classList.remove('notif-anim'); void alertaExistente.offsetWidth; alertaExistente.classList.add('notif-anim');
+                if (navigator.vibrate) navigator.vibrate([100]); return;
+            }
+            const bgClass = tipo === 'success' ? 'bg-emerald-600' : 'bg-blue-600';
+            const icon = tipo === 'success' ? 'check-circle' : 'info';
+            const div = document.createElement('div');
+            div.id = notifId;
+            div.className = `pointer-events-auto w-full p-4 rounded-xl shadow-[0_15px_30px_rgba(0,0,0,0.5)] border-2 border-white/40 ${bgClass} text-white flex flex-col gap-2 notif-anim`;
+            div.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i data-lucide="${icon}" class="w-8 h-8 flex-shrink-0"></i>
+                    <div class="flex-1">
+                        <h4 class="font-black text-sm uppercase tracking-widest text-white/90 leading-tight">${titulo}</h4>
+                        <p class="text-sm font-medium mt-1 leading-tight">${detalle}</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('${notifId}').remove()" class="w-full py-2 bg-black/30 hover:bg-black/50 rounded-lg font-black text-xs tracking-widest uppercase border border-white/30 active:scale-[0.98] mt-1">OK</button>
+            `;
+            container.prepend(div); lucide.createIcons();
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+
+        async function sincronizarMesasDB() {
+            try {
+                const res = await fetch(`${API_URL}/mesas?t=${new Date().getTime()}`);
+                const mesasDB = await res.json();
+                mesasDB.forEach(mdb => {
+                    let mEncontrada = mesasTerraza.find(m => m.id === mdb.numero) || mesasPatio.find(m => m.id === mdb.numero);
+                    if (mEncontrada) { mEncontrada.est = mdb.estado; mEncontrada.mesero = mdb.mesero; }
+                });
+                generarMesasVisuales(mesasTerraza, 'grid-terraza'); generarMesasVisuales(mesasPatio, 'grid-patio');
+                if(mesaSeleccionadaId && mesaSeleccionadaId !== 'DELIVERY'){ document.getElementById(`mesa-vis-${mesaSeleccionadaId}`)?.classList.add('mesa-seleccionada'); }
+            } catch (e) {}
+        }
+
+        function formatoMesaStr(idStr) {
+            if (idStr === 'Delivery') return 'Delivery';
+            if (idStr.startsWith('T')) return `Mesa ${idStr.replace('T', '')} (Terr)`;
+            if (idStr.startsWith('P')) return `Mesa ${idStr.replace('P', '')} (Patio)`;
+            if (idStr.startsWith('S')) return `Sala ${idStr.replace('S', '')}`;
+            return `Mesa ${idStr}`;
+        }
+
+        function iniciarWebSocketMesero() {
+            socketMesero = new WebSocket(WS_URL);
+            socketMesero.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.tipo === "TIEMPO_PREP") {
+                    if (data.minutos === 0) {
+                        crearNotificacionFija('✅ ¡ORDEN LISTA!', `Comida/Bebida de <b>${formatoMesaStr(data.mesa)}</b> lista.`, 'success', 'lista-'+data.mesa);
+                    } else {
+                        crearNotificacionFija('⏳ AVISO DE TIEMPO', `Orden de <b>${formatoMesaStr(data.mesa)}</b> tardará aprox ${data.minutos} min.`, 'info', 'tiempo-'+data.mesa);
+                    }
+                } else if (data.tipo === "PROPINAS_ACTUALIZADAS") {
+                    document.getElementById('mesero-propinas-txt').textContent = `$${data.total.toFixed(2)}`;
+                } else if (data.tipo === "AGOTADO_ACTUALIZADO") {
+                    listaAgotadosGlobal = data.lista_agotados || [];
+                    renderizarCatalogo(menuActivo);
+                    crearNotificacionFija(data.agotado ? '🚫 PRODUCTO AGOTADO' : '✅ PRODUCTO DISPONIBLE', `Barra/Cocina marcó: <b>${data.nombre}</b> como ${data.agotado ? 'AGOTADO' : 'DISPONIBLE'}.`, data.agotado ? 'info' : 'success', 'agotado-'+data.producto_id);
+                } else if (data.tipo === "NUEVA_COMANDA_COCINA" || data.tipo === "NUEVA_COMANDA_BARRA" || data.tipo === "ITEM_DESPACHADO" || data.tipo === "MESA_LIBERADA" || data.tipo === "MESA_PAGADA") {
+                    sincronizarMesasDB();
+                    if(mesaSeleccionadaId && mesaSeleccionadaId === data.mesa) consultarCuentaMesaOcupada(mesaSeleccionadaId);
+                }
+            };
+            socketMesero.onclose = () => { setTimeout(iniciarWebSocketMesero, 3000); };
+        }
+
+        function generarMesasVisuales(mesas, contenedorId) {
+            const cont = document.getElementById(contenedorId);
+            cont.innerHTML = mesas.map(m => {
+                let nombreDisplay = m.n.includes('Sala') ? m.n.replace('Sala', 'S.') : `${m.n}`;
+                let label = m.n.includes('Sala') ? '' : 'Mesa<br>';
+                let colorClase = m.est === 'libre' ? 'mesa-libre text-emerald-800' : (m.est === 'ocupada' ? 'mesa-ocupada text-red-800' : 'mesa-limpieza text-amber-800');
+                let badgeMesero = m.est === 'ocupada' && m.mesero ? `<span class="absolute top-1.5 right-1.5 text-[8px] md:text-[9px] font-bold bg-red-900/90 text-white px-1.5 py-0.5 rounded shadow-sm">${m.mesero}</span>` : '';
+                return `<div class="w-full flex flex-col items-center group cursor-pointer" onclick="seleccionarMesa('${m.id}', '${m.n.includes('Sala')? m.n : 'Mesa '+m.n}', ${m.cap}, '${m.est}')"><div id="mesa-vis-${m.id}" class="mesa-visual ${colorClase} w-full h-24 md:h-28 rounded-2xl flex flex-col items-center justify-center shadow-sm active:scale-95 transition-transform text-center leading-tight p-2">${badgeMesero}<span class="text-sm font-bold opacity-60 tracking-widest">${label}</span><span class="font-black text-2xl md:text-3xl -mt-1">${nombreDisplay}</span></div></div>`
+            }).join('');
+        }
+
+        function cambiarZona(zona) {
+            zonaActivaPrevia = zona;
+            document.getElementById('zona-terraza').classList.remove('active'); document.getElementById('zona-patio').classList.remove('active'); 
+            document.getElementById('tab-terraza').className = "flex-1 py-2.5 rounded-lg text-sm font-bold bg-white border border-gray-200 text-gris-trinchera transition-colors shadow-sm"; document.getElementById('tab-patio').className = "flex-1 py-2.5 rounded-lg text-sm font-bold bg-white border border-gray-200 text-gris-trinchera transition-colors shadow-sm";
+            document.getElementById(`tab-${zona}`).className = "flex-1 py-2.5 rounded-lg text-sm font-bold bg-verde-militar text-white transition-colors shadow-sm";
+            document.getElementById(`zona-${zona}`).classList.add('active'); 
+        }
+
+        function setServicio(tipo) {
+            document.getElementById('btn-srv-local').className = "px-3 py-1.5 rounded bg-white text-gray-500 font-bold text-xs"; document.getElementById('btn-srv-llevar').className = "px-3 py-1.5 rounded bg-white text-gray-500 font-bold text-xs";
+            document.getElementById(`btn-srv-${tipo}`).className = "px-3 py-1.5 rounded bg-gray-200 shadow-inner text-verde-militar font-black text-xs"; 
+            if (tipo === 'llevar') {
+                document.getElementById('seccion-mesas').style.display = 'none';
+                if(mesaSeleccionadaId !== 'DELIVERY' && comandaActual.length > 0) { comandaActual = []; renderizarComanda(); }
+                iniciarOrdenDelivery();
+            } else {
+                document.getElementById('seccion-mesas').style.display = 'flex';
+                if(mesaSeleccionadaId === 'DELIVERY' && comandaActual.length > 0) { comandaActual = []; renderizarComanda(); }
+                limpiarSeleccion();
+            }
+        }
+
+        function iniciarOrdenDelivery() {
+            limpiarSeleccion(); mesaSeleccionadaId = 'DELIVERY'; mesaSeleccionadaEstado = 'libre';
+            document.getElementById('mesa-activa-titulo').textContent = "Domicilio/Llevar";
+            document.getElementById('mesa-creador-info').textContent = "";
+            document.getElementById('mesa-estado-txt').textContent = "NUEVA"; 
+            document.getElementById('mesa-estado-txt').className = "px-3 py-1 bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-sm font-black uppercase shadow-sm";
+            document.getElementById('panel-limpieza').classList.add('hidden');
+            document.getElementById('panel-consumo-actual').classList.add('hidden');
+            evaluarBotonEnviar();
+            document.getElementById('area-comanda').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function limpiarSeleccion() {
+            if(mesaSeleccionadaId && mesaSeleccionadaId !== 'DELIVERY') document.getElementById(`mesa-vis-${mesaSeleccionadaId}`)?.classList.remove('mesa-seleccionada');
+            mesaSeleccionadaId = null; mesaSeleccionadaEstado = 'libre';
+            document.getElementById('mesa-activa-titulo').textContent = "Sin Seleccionar";
+            document.getElementById('mesa-creador-info').textContent = "";
+            document.getElementById('mesa-estado-txt').textContent = 'INACTIVA'; 
+            document.getElementById('mesa-estado-txt').className = "px-3 py-1 bg-white text-gray-400 border border-gray-200 rounded-lg text-sm font-black uppercase shadow-sm";
+            document.getElementById('panel-limpieza').classList.add('hidden');
+            document.getElementById('panel-consumo-actual').classList.add('hidden');
+            evaluarBotonEnviar();
+        }
+
+        async function seleccionarMesa(id, nombreMesa, cap, est) {
+            if (comandaActual.length > 0) { comandaActual = []; renderizarComanda(); }
+            if (mesaSeleccionadaId === 'DELIVERY') setServicio('local');
+            limpiarSeleccion(); mesaSeleccionadaId = id; mesaSeleccionadaEstado = est;
+            document.getElementById(`mesa-vis-${id}`).classList.add('mesa-seleccionada');
+            document.getElementById('mesa-activa-titulo').textContent = nombreMesa;
+            
+            const txtEst = document.getElementById('mesa-estado-txt');
+            const panelLimpieza = document.getElementById('panel-limpieza');
+            const panelConsumo = document.getElementById('panel-consumo-actual');
+            
+            if(est === 'libre') {
+                txtEst.textContent = "LIBRE"; 
+                txtEst.className = "px-3 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-black uppercase shadow-sm";
+                panelLimpieza.classList.add('hidden'); panelConsumo.classList.add('hidden');
+                document.getElementById('mesa-creador-info').textContent = "Mesa limpia, lista para nueva orden.";
+            } else if (est === 'ocupada') {
+                txtEst.textContent = "OCUPADA"; 
+                txtEst.className = "px-3 py-1 bg-red-100 text-red-700 border border-red-200 rounded-lg text-sm font-black uppercase shadow-sm";
+                panelLimpieza.classList.add('hidden'); consultarCuentaMesaOcupada(id); 
+            } else if (est === 'limpieza') {
+                txtEst.textContent = "POR LIMPIAR"; 
+                txtEst.className = "px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-sm font-black uppercase shadow-sm";
+                panelLimpieza.classList.remove('hidden'); panelConsumo.classList.add('hidden');
+                document.getElementById('mesa-creador-info').textContent = "Mesa en proceso de liberación.";
+            }
+            evaluarBotonEnviar(); document.getElementById('area-comanda').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function consultarCuentaMesaOcupada(mesaId) {
+            try {
+                const resPendientes = await fetch(`${API_URL}/caja/pendientes?t=${new Date().getTime()}`);
+                const pendientes = await resPendientes.json();
+                
+                // Comparamos el ID de manera exacta (Ej: "T11" con "T11")
+                const ordenPendiente = pendientes.find(p => String(p.mesa) === String(mesaId) || (mesaId === 'DELIVERY' && String(p.mesa).toUpperCase() === 'DELIVERY'));
+                
+                if (!ordenPendiente) {
+                    document.getElementById('mesa-creador-info').textContent = "Cargando cuenta...";
+                    document.getElementById('panel-consumo-actual').classList.add('hidden');
+                    return;
+                }
+
+                const resCuenta = await fetch(`${API_URL}/cuenta/${ordenPendiente.orden_id}`);
+                const cuenta = await resCuenta.json();
+                
+                if (!cuenta.error && cuenta.detail === undefined) {
+                    document.getElementById('mesa-creador-info').textContent = `Orden creada por: ${cuenta.mesero} (${cuenta.hora})`;
+                    document.getElementById('consumo-acumulado-total').textContent = `$${(cuenta.total || 0).toFixed(2)}`;
+                    
+                    const lista = document.getElementById('lista-consumo-acumulado');
+                    if (cuenta.items && cuenta.items.length > 0) {
+                        lista.innerHTML = cuenta.items.map(i => `
+                            <div class="flex justify-between items-start py-1 border-b border-gray-100 last:border-0">
+                                <span class="pr-2"><b class="text-cafe-madera mr-1">${i.cantidad}x</b> ${i.producto}</span>
+                                <span class="font-black text-gray-700">$${(i.importe || 0).toFixed(2)}</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        lista.innerHTML = `<p class="text-center text-gray-400 italic py-2">Sin productos aún.</p>`;
+                    }
+                    document.getElementById('panel-consumo-actual').classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error("Error al consultar cuenta ocupada:", e);
+                document.getElementById('mesa-creador-info').textContent = "Error de red al cargar la cuenta.";
+            }
+        }
+
+        async function confirmarMesaLimpia() {
+            if(!mesaSeleccionadaId) return;
+            try {
+                await fetch(`${API_URL}/mesas/${mesaSeleccionadaId}/liberar`, { method: 'POST' });
+                mesaSeleccionadaEstado = 'libre';
+                let mesaObj = mesasTerraza.find(m => m.id === mesaSeleccionadaId) || mesasPatio.find(m => m.id === mesaSeleccionadaId);
+                if(mesaObj) mesaObj.est = 'libre';
+                seleccionarMesa(mesaSeleccionadaId, document.getElementById('mesa-activa-titulo').textContent, 4, 'libre');
+                sincronizarMesasDB();
+            } catch (e) { alert("Error al liberar mesa."); }
+        }
+
+        async function cargarMenuAPI() {
+            const area = document.getElementById('area-catalogo');
+            try {
+                const res = await fetch(`${API_URL}/productos`);
+                if (res.ok) { 
+                    catalogoProductos = await res.json(); 
+                    if(catalogoProductos.length === 0) {
+                        area.innerHTML = `
+                        <div class="col-span-2 text-center py-12 bg-red-50 rounded-2xl border border-red-200 shadow-inner">
+                            <i data-lucide="database-zap" class="w-12 h-12 text-red-400 mx-auto mb-3"></i>
+                            <p class="text-red-700 font-black text-xl mb-1">¡Menú Vacío!</p>
+                            <p class="text-red-600/80 text-sm font-semibold">Ejecuta <b>python productos.py</b> en tu servidor para rellenar la base de datos.</p>
+                        </div>`;
+                        lucide.createIcons();
+                    } else {
+                        renderizarCatalogo(menuActivo); 
+                    }
+                }
+            } catch (e) {
+                area.innerHTML = `<div class="col-span-2 text-center py-10 bg-red-50 rounded-xl border border-red-200"><p class="text-red-600 font-bold text-lg">Error de conexión.</p></div>`;
+            }
+        }
+
+        function cambiarMenu(tipo) {
+            menuActivo = tipo;
+            document.getElementById('tab-menu-alimentos').className = "flex-1 py-4 text-center font-bold text-base text-gris-trinchera border-b-4 border-transparent transition"; document.getElementById('tab-menu-bebidas').className = "flex-1 py-4 text-center font-bold text-base text-gris-trinchera border-b-4 border-transparent transition";
+            document.getElementById('tab-menu-alimentos').classList.remove('bg-white', 'text-verde-militar', 'border-verde-militar'); document.getElementById('tab-menu-bebidas').classList.remove('bg-white', 'text-verde-militar', 'border-verde-militar');
+            document.getElementById(`tab-menu-${tipo}`).classList.add('bg-white', 'text-verde-militar', 'border-verde-militar');
+            renderizarCatalogo(tipo);
+        }
+
+        function renderizarCatalogo(categoria) {
+            const area = document.getElementById('area-catalogo');
+            const productos = catalogoProductos.filter(p => p.categoria === categoria);
+            if (productos.length === 0) return; 
+
+            area.innerHTML = `<div class="grid grid-cols-2 gap-3 md:gap-4 pb-8">` + productos.map(p => {
+                const estaAgotado = (listaAgotadosGlobal && listaAgotadosGlobal.includes(p.id)) || false;
+                return `
+                <button onclick="${estaAgotado ? '' : `intentarAgregar(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.precio}, '${p.categoria}')`}" 
+                        class="bg-menu-fondo border border-menu-borde hover:border-cafe-madera p-4 md:p-5 rounded-2xl shadow-sm active:scale-95 transition-transform flex flex-col justify-between text-left min-h-[100px] relative overflow-hidden ${estaAgotado ? 'opacity-40 grayscale cursor-not-allowed' : ''}">
+                    ${estaAgotado ? '<span class="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">Agotado</span>' : ''}
+                    <span class="font-black text-sm md:text-base text-cafe-madera leading-tight">${p.nombre}</span>
+                    <span class="text-base md:text-lg font-black text-verde-militar mt-2">$${p.precio.toFixed(2)}</span>
+                </button>`;
+            }).join('') + `</div>`;
+        }
+
+        function intentarAgregar(id, nombreProd, precio, categoria) {
+            if (!mesaSeleccionadaId) { alert("Selecciona una mesa primero."); return; }
+            if (mesaSeleccionadaEstado === 'limpieza') { alert("Confirma la limpieza de la mesa primero."); return; }
+            const nombreLower = nombreProd.toLowerCase(); productoTemp = { id, nombre: nombreProd, precio, categoria, notasAcumuladas: [] };
+            if (nombreLower.includes("tiras") || nombreLower.includes("boneless") || nombreLower.includes("alitas")) { abrirModalM('Salsas', 'Elige salsas', ['Naturales', 'BBQ', 'Búfalo', 'Lemon-Pepper', 'Mango-Habanero', 'Parmesano']); return; }
+            if (nombreLower === "cubeta de cerveza") { abrirModalM('Marcas (10pz)', 'Elige marcas', ['Victoria', 'Corona', 'Ultra', 'XX', 'Surtida']); return; }
+            if (nombreLower.includes("michelada") || nombreLower.includes("mojito") || nombreLower.includes("azulito") || nombreLower.includes("agua de sabor") || nombreLower.includes("piña colada")) {
+                let precioMedio = precio - 30; let opciones = [{ label: `1/2 Litro ($${precioMedio.toFixed(2)})`, valorBase: 'Medio Litro', precioFinal: precioMedio }, { label: `1 Litro ($${precio.toFixed(2)})`, valorBase: 'Un Litro', precioFinal: precio }];
+                if (nombreLower === "michelada s/alcohol") { abrirModalObj('Tamaño', 'Elige presentación', opciones, null); } else if (nombreLower.includes("michelada")) { abrirModalObj('Tamaño', 'Elige presentación', opciones, 'miche'); } else { abrirModalObj('Tamaño', 'Elige presentación', opciones, null); } return;
+            }
+            if (nombreLower === "cerveza (botella)") { abrirModalS('Marca', 'Elige marca', ['Victoria', 'Corona', 'Ultra', 'XX']); return; }
+            if (nombreLower === "caguama") { abrirModalS('Caguama', 'Elige marca', ['Indio', 'Miller', 'XX', 'Victoria', 'Corona']); return; }
+            agregarDirecto(id, nombreProd, precio, "", categoria);
+        }
+
+        function abrirModalM(titulo, subtitulo, opciones) {
+            document.getElementById('modal-titulo').textContent = titulo; document.getElementById('modal-subtitulo').textContent = subtitulo; document.getElementById('modal-acciones').classList.remove('hidden');
+            document.getElementById('modal-opciones').className = "grid grid-cols-2 gap-3 mb-2 overflow-y-auto pb-2";
+            document.getElementById('modal-opciones').innerHTML = opciones.map(opt => `<label class="flex items-center gap-3 p-4 border border-gray-200 rounded-xl active:bg-gray-50"><input type="checkbox" value="${opt}" class="w-6 h-6 text-verde-militar"><span class="text-sm font-bold text-cafe-madera">${opt}</span></label>`).join('');
+            document.getElementById('modal-dinamico').classList.remove('hidden');
+        }
+
+        function abrirModalObj(titulo, subtitulo, opcionesObj, flujo) {
+            productoTemp.flujo = flujo; document.getElementById('modal-titulo').textContent = titulo; document.getElementById('modal-subtitulo').textContent = subtitulo; document.getElementById('modal-acciones').classList.add('hidden');
+            document.getElementById('modal-opciones').className = "flex flex-col gap-3 mb-2 overflow-y-auto pb-2";
+            document.getElementById('modal-opciones').innerHTML = opcionesObj.map(opt => `<button onclick="opcAuto('${opt.valorBase}', ${opt.precioFinal})" class="p-5 border border-gray-200 rounded-2xl font-black text-lg text-gray-700 text-left shadow-sm active:scale-95 active:bg-gray-100">${opt.label}</button>`).join('');
+            document.getElementById('modal-dinamico').classList.remove('hidden');
+        }
+
+        function abrirModalS(titulo, subtitulo, opcionesArr) {
+            document.getElementById('modal-titulo').textContent = titulo; document.getElementById('modal-subtitulo').textContent = subtitulo; document.getElementById('modal-acciones').classList.add('hidden');
+            document.getElementById('modal-opciones').className = "flex flex-col gap-3 mb-2 overflow-y-auto pb-2";
+            document.getElementById('modal-opciones').innerHTML = opcionesArr.map(opt => `<button onclick="opcAuto('${opt}', null)" class="p-5 border border-gray-200 rounded-2xl font-black text-lg text-gray-700 text-left shadow-sm active:scale-95 active:bg-gray-100">${opt}</button>`).join('');
+            document.getElementById('modal-dinamico').classList.remove('hidden');
+        }
+
+        function opcAuto(valorAnotacion, precioNuevo) {
+            if (precioNuevo !== null) productoTemp.precio = precioNuevo; productoTemp.notasAcumuladas.push(valorAnotacion);
+            if (productoTemp.flujo === 'miche') { abrirModalS('Cerveza', 'Elige para michelada', ['Miller', 'XX', 'Indio', 'Corona', 'Victoria']); productoTemp.flujo = null; } 
+            else { agregarDirecto(productoTemp.id, productoTemp.nombre, productoTemp.precio, productoTemp.notasAcumuladas.join(', '), productoTemp.categoria); cerrarModal(); }
+        }
+
+        function confirmarOpcionesModal() {
+            const inputs = document.querySelectorAll('#modal-opciones input[type="checkbox"]:checked');
+            if (inputs.length === 0) { alert("Selecciona una opción."); return; }
+            const valores = Array.from(inputs).map(i => i.value).join(', ');
+            productoTemp.notasAcumuladas.push(valores);
+            agregarDirecto(productoTemp.id, productoTemp.nombre, productoTemp.precio, productoTemp.notasAcumuladas.join(' | '), productoTemp.categoria);
+            cerrarModal();
+        }
+
+        function cerrarModal() { document.getElementById('modal-dinamico').classList.add('hidden'); productoTemp = null; }
+
+        function agregarDirecto(id, nombreProd, precio, notasFijas, categoria) {
+            const existente = comandaActual.find(i => i.id === id && i.notas === notasFijas);
+            if (existente) existente.cantidad += 1; else comandaActual.push({ id, nombre: nombreProd, precio, cantidad: 1, notas: notasFijas, categoria });
+            if(navigator.vibrate) navigator.vibrate(40);
+            renderizarComanda();
+        }
+
+        function modificarCantidad(index, delta) { comandaActual[index].cantidad += delta; if (comandaActual[index].cantidad <= 0) comandaActual.splice(index, 1); renderizarComanda(); }
+        function eliminarProducto(index) { comandaActual.splice(index, 1); renderizarComanda(); }
+        function actualizarNota(index, nuevaNota) { comandaActual[index].notas = nuevaNota; renderizarComanda(); }
+
+        function renderizarComanda() {
+            totalComanda = 0; let articulos = 0;
+            comandaActual.forEach(item => { totalComanda += item.precio * item.cantidad; articulos += parseInt(item.cantidad); });
+            document.getElementById('total-dinero-txt').textContent = `$${totalComanda.toFixed(2)}`; 
+            document.getElementById('total-articulos-txt').textContent = `${articulos} Nuevos`;
+            if (!document.getElementById('modal-confirmacion').classList.contains('hidden')) { actualizarListaModalConfirmacion(); }
+            evaluarBotonEnviar();
+        }
+
+        function actualizarListaModalConfirmacion() {
+            const lista = document.getElementById('lista-confirmacion');
+            if (comandaActual.length === 0) { lista.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-gray-400 py-10"><i data-lucide="receipt" class="w-10 h-10 mb-2 opacity-30"></i><p class="text-sm font-bold">La orden está vacía</p></div>`; document.getElementById('total-confirmacion-txt').textContent = `$0.00`; return; }
+            lista.innerHTML = comandaActual.map((item, idx) => `
+                <div class="bg-white p-4 rounded-xl border border-gray-200 flex flex-col gap-3 shadow-sm">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1 pr-2"><span class="font-bold text-base text-cafe-madera leading-tight">${item.nombre}</span></div>
+                        <span class="font-black text-xl text-negro-carbon">$${(item.precio * item.cantidad).toFixed(2)}</span>
+                    </div>
+                    <div class="flex flex-col gap-3 border-t border-gray-100 pt-3">
+                        <input type="text" placeholder="Nota extra (opcional)..." value="${item.notas}" class="text-sm font-medium w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-verde-militar bg-gray-50 shadow-inner" onchange="actualizarNota(${idx}, this.value)">
+                        <div class="flex items-center justify-between">
+                            <button onclick="eliminarProducto(${idx})" class="p-2.5 text-red-500 hover:text-red-700 rounded-lg bg-red-50 active:bg-red-100 border border-red-100 shadow-sm"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                            <div class="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 shadow-sm">
+                                <button onclick="modificarCantidad(${idx}, -1)" class="text-red-600 font-black px-4 py-1.5 hover:bg-gray-200 rounded-lg text-2xl active:scale-95 leading-none">-</button>
+                                <span class="text-xl font-black w-6 text-center">${item.cantidad}</span>
+                                <button onclick="modificarCantidad(${idx}, 1)" class="text-verde-militar font-black px-4 py-1.5 hover:bg-gray-200 rounded-lg text-2xl active:scale-95 leading-none">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`).join('');
+            document.getElementById('total-confirmacion-txt').textContent = `$${totalComanda.toFixed(2)}`;
+            lucide.createIcons();
+        }
+
+        function evaluarBotonEnviar() {
+            const btn = document.getElementById('btn-enviar');
+            if (mesaSeleccionadaId && comandaActual.length > 0) { 
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-verde-militar'); 
+                btn.classList.add('bg-emerald-600', 'animate-pulse'); 
+                btn.removeAttribute('disabled');
+            } else { 
+                btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-verde-militar'); 
+                btn.classList.remove('bg-emerald-600', 'animate-pulse');
+                btn.setAttribute('disabled', 'true');
+            }
+        }
+
+        function abrirModalConfirmacion() { actualizarListaModalConfirmacion(); document.getElementById('modal-confirmacion').classList.remove('hidden'); }
+        function cerrarModalConfirmacion() { document.getElementById('modal-confirmacion').classList.add('hidden'); }
+
+        async function ejecutarEnvioAPI() {
+            const btn = document.getElementById('btn-confirmar-envio');
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> ENVIANDO...`; btn.disabled = true;
+            try {
+                const nombreMesero = sessionInfo.nombre || 'Mesero';
+                const payload = { 
+                    items: comandaActual.map(i => ({ producto_id: i.id, cantidad: i.cantidad, notas: i.notas || "" })),
+                    mesero: nombreMesero
+                };
+                
+                const urlMesa = mesaSeleccionadaId === 'DELIVERY' ? 'DELIVERY' : mesaSeleccionadaId;
+                const respuesta = await fetch(`${API_URL}/mesas/${urlMesa}/comanda`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!respuesta.ok) throw new Error("Error en servidor");
+                
+                cerrarModalConfirmacion(); 
+                comandaActual = []; 
+                renderizarComanda();
+                
+                // Limpiar la selección actual para la vista del mesero
+                limpiarSeleccion();
+                
+                await sincronizarMesasDB();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                crearNotificacionFija('ORDEN ENVIADA', 'La comanda se ha impreso en las áreas correspondientes.', 'success', 'envio-ok');
+            } catch (e) { alert("Error de red al enviar la orden."); }
+            btn.innerHTML = `<i data-lucide="send" class="w-6 h-6 -ml-1"></i> ¡ENVIAR A COCINA!`; btn.disabled = false; lucide.createIcons();
+        }
+    </script>
+</body>
+</html>
