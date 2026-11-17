@@ -16,7 +16,7 @@ El backend expone una API REST y un WebSocket (`/ws/comandas`) para notificar nu
 
 - **Backend:** Python 3.14, FastAPI, SQLAlchemy, SQLite, Uvicorn
 - **Frontend:** HTML, CSS y JavaScript vanilla, Tailwind CSS por CDN, Lucide, Chart.js
-- **Base de datos:** SQLite (`restaurante.db`, se genera en local y no se sube al repositorio)
+- **Base de datos:** SQLite (`restaurante.db`, se genera en local)
 
 ## Estructura
 
