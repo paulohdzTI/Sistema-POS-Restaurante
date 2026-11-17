@@ -30,7 +30,7 @@ backend/
   limpiar_db.py    # Borra la base de datos local para recrearla
 frontend/
   login.html       # Entrada al sistema, redirige al panel según el rol
-  index.html       # Vista integral antigua (mesero / cocina / caja), se conserva en el repo
+  index.html       # Vista integral antigua (mesero / cocina / caja), se conserva en el repo; no funciona con las rutas actuales del backend
   app.js           # Lógica de la vista integral antigua
   panel_mesero.html
   panel_cocina.html
@@ -104,6 +104,7 @@ Los usuarios de prueba se crean con `backend/usuarios.py`. La contraseña inicia
 
 - El archivo `restaurante.db` no está en el repositorio: se crea automáticamente al iniciar el backend y se llena con los scripts de `productos.py` y `usuarios.py`.
 - El backend permite CORS desde cualquier origen (`allow_origins=["*"]`), pensado para uso en red local. No lo expongas directamente a internet sin autenticación y HTTPS.
+- `index.html` y `app.js` son una vista integral antigua que llama rutas que ya no existen (`/mesas/{id}/cuenta`, `/mesas/{id}/cobrar`, `/cocina/despachar/{id}`); despachar, ver la cuenta y cobrar no funcionan desde ahí. La entrada real del sistema es `login.html`, que redirige a los paneles según el rol.
 
 ## Capturas de demostración
 
